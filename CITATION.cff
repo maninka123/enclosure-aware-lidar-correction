@@ -29,7 +29,7 @@ preferred-citation:
       given-names: Simit
   journal: Measurement
   volume: "285"
-  article-number: "122285"
+  start: "122285" # Article identifier (the journal uses article numbers).
   year: 2026
   doi: "10.1016/j.measurement.2026.122285"
   url: "https://www.sciencedirect.com/science/article/pii/S0263224126019949"
