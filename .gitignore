@@ -8,3 +8,6 @@ outputs/*
 !outputs/README.md
 data/raw/*
 !data/raw/README.md
+node_modules/
+test-results/
+playwright-report/

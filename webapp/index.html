@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Interactive spherical-dome LiDAR refraction, enclosure design and point-cloud correction."
+    />
+    <title>Enclosure Lab · LiDAR optics</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="vendor/plotly.min.js"></script>
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#designer"
+        ><span class="brand-icon">◉</span
+        ><span
+          >ENCLOSURE <b>LAB</b
+          ><small>LiDAR optics / interactive research workspace</small></span
+        ></a
+      >
+      <div class="toplinks">
+        <span class="privacy"><i></i> Runs on your device</span
+        ><a
+          href="https://github.com/maninka123/enclosure-aware-lidar-correction"
+          target="_blank"
+          rel="noopener"
+          >GitHub ↗</a
+        ><a
+          href="https://doi.org/10.1016/j.measurement.2026.122285"
+          target="_blank"
+          rel="noopener"
+          >Paper ↗</a
+        >
+      </div>
+    </header>
+    <nav class="tabs" role="tablist" aria-label="Workspaces">
+      <button
+        role="tab"
+        id="tab-designer"
+        aria-controls="designer"
+        data-tab="designer"
+        aria-selected="true"
+      >
+        01 <span>Enclosure designer</span>
+      </button>
+      <button
+        role="tab"
+        id="tab-beam"
+        aria-controls="beam"
+        data-tab="beam"
+        aria-selected="false"
+      >
+        02 <span>Beam inspector</span>
+      </button>
+      <button
+        role="tab"
+        id="tab-atlas"
+        aria-controls="atlas"
+        data-tab="atlas"
+        aria-selected="false"
+      >
+        03 <span>Deflection atlas</span>
+      </button>
+      <button
+        role="tab"
+        id="tab-cloud"
+        aria-controls="cloud"
+        data-tab="cloud"
+        aria-selected="false"
+      >
+        04 <span>Point clouds</span>
+      </button>
+      <button
+        role="tab"
+        id="tab-scene"
+        aria-controls="scene"
+        data-tab="scene"
+        aria-selected="false"
+      >
+        05 <span>Scene lab</span>
+      </button>
+      <button
+        role="tab"
+        id="tab-learn"
+        aria-controls="learn"
+        data-tab="learn"
+        aria-selected="false"
+      >
+        06 <span>Physics & materials</span>
+      </button>
+    </nav>
+    <button id="toggle-controls" class="mobile-controls">
+      Show optical parameters ?
+    </button>
+    <div class="shell controls-collapsed">
+      <aside class="controls" aria-label="Enclosure and sensor parameters">
+        <div class="control-heading">
+          <h2>Your optical system</h2>
+          <span id="live-state" class="tag">LIVE</span>
+        </div>
+        <label
+          >Starting configuration<select id="preset">
+            <option value="baseline">Python baseline · 4 mm</option>
+            <option value="legacy">Historical geometry · 6 mm</option>
+            <option value="centered">Centered source · zero deflection</option>
+          </select></label
+        >
+        <details open>
+          <summary>01 / Enclosure geometry</summary>
+          <div class="pair">
+            <label
+              >Inner radius <em>mm</em
+              ><input
+                id="radius"
+                type="number"
+                min="1"
+                max="5000"
+                step=".1"
+                value="74" /></label
+            ><label
+              >Wall thickness <em>mm</em
+              ><input
+                id="thickness"
+                type="number"
+                min=".01"
+                max="1000"
+                step=".1"
+                value="4"
+            /></label>
+          </div>
+          <label
+            >Optical opening<select id="aperture">
+              <option value="upper">Upper hemisphere (+Z)</option>
+              <option value="full">Full spherical shell</option>
+            </select></label
+          >
+          <div class="triple">
+            <label
+              >Centre X <em>mm</em
+              ><input id="cx" type="number" value="0" step="1" /></label
+            ><label
+              >Centre Y <em>mm</em
+              ><input id="cy" type="number" value="0" step="1" /></label
+            ><label
+              >Centre Z <em>mm</em
+              ><input id="cz" type="number" value="0" step="1"
+            /></label>
+          </div>
+        </details>
+        <details open>
+          <summary>02 / Materials</summary>
+          <label
+            >Dome material<select id="material">
+              <option value="custom">Custom / measured index</option>
+              <option value="pc">Polycarbonate · nominal 1.586</option>
+              <option value="pmma">PMMA / acrylic · nominal 1.49</option>
+              <option value="bk7">SCHOTT N-BK7 · dispersion</option>
+            </select></label
+          >
+          <div class="pair">
+            <label
+              >Wavelength <em>nm</em
+              ><input
+                id="wavelength"
+                type="number"
+                min="400"
+                max="1550"
+                value="905"
+                step="1" /></label
+            ><label
+              >Wall index <em>n</em
+              ><input
+                id="nwall"
+                type="number"
+                min=".1"
+                max="5"
+                step=".0001"
+                value="1.52"
+            /></label>
+          </div>
+          <p id="material-note" class="micro"></p>
+          <div class="pair">
+            <label
+              >Inside index<input
+                id="ninside"
+                type="number"
+                value="1.000293"
+                step=".000001"
+                min=".1" /></label
+            ><label
+              >Outside index<input
+                id="noutside"
+                type="number"
+                value="1.000293"
+                step=".000001"
+                min=".1"
+            /></label>
+          </div>
+          <p class="micro">
+            Air starts at 1.000293 (legacy assumption). Set indices for your
+            wavelength, temperature and surrounding medium.
+          </p>
+        </details>
+        <details open>
+          <summary>03 / LiDAR position & orientation</summary>
+          <div class="triple">
+            <label
+              >X <em>mm</em
+              ><input id="ox" type="number" value="-20" step="1" /></label
+            ><label
+              >Y <em>mm</em
+              ><input id="oy" type="number" value="0" step="1" /></label
+            ><label
+              >Z <em>mm</em><input id="oz" type="number" value="24.45" step="1"
+            /></label>
+          </div>
+          <div class="triple">
+            <label
+              >Roll <em>°</em
+              ><input id="roll" type="number" value="0" step="1" /></label
+            ><label
+              >Pitch <em>°</em
+              ><input id="pitch" type="number" value="0" step="1" /></label
+            ><label
+              >Yaw <em>°</em><input id="yaw" type="number" value="0" step="1"
+            /></label>
+          </div>
+          <p class="micro">
+            Enclosure axes; right-handed rotation Rz(yaw) Ry(pitch) Rx(roll).
+            The sensor looks along its local +Z axis.
+          </p>
+        </details>
+        <details open>
+          <summary>04 / Selected beam</summary>
+          <label
+            >Polar angle from sensor +Z <output id="polar-out">25°</output
+            ><input
+              id="polar"
+              type="range"
+              min="0"
+              max="180"
+              value="25"
+              step=".5"
+          /></label>
+          <label
+            >Azimuth about sensor +Z <output id="azimuth-out">0°</output
+            ><input
+              id="azimuth"
+              type="range"
+              min="0"
+              max="360"
+              value="0"
+              step="1"
+          /></label>
+          <label
+            >Display length after shell <em>mm</em
+            ><input
+              id="raylength"
+              type="number"
+              value="100"
+              min="1"
+              max="10000"
+              step="10"
+          /></label>
+        </details>
+        <div class="button-pair">
+          <button id="save-config" class="secondary">↓ Config JSON</button
+          ><label class="file-button"
+            >↑ Load config<input id="load-config" type="file" accept=".json"
+          /></label>
+        </div>
+        <button id="reset" class="quiet full">Reset to Python baseline</button>
+      </aside>
+      <main>
+        <div id="error" class="error" role="alert" hidden></div>
+        <div id="notice" class="notice" role="status" hidden></div>
+        <section id="designer" role="tabpanel" aria-labelledby="tab-designer">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">DESIGN / TRACE / COMPARE</p>
+              <h1>See what your enclosure changes.</h1>
+              <p>
+                Move the LiDAR, shape the dome, and watch refraction respond.
+              </p>
+            </div>
+            <button id="pin" class="secondary">Pin a comparison</button>
+          </div>
+          <div id="designer-stats" class="stats"></div>
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2>Enclosure & sensor frame</h2>
+                <p>Drag to orbit · scroll to zoom · double-click to reset</p>
+              </div>
+              <div class="actions">
+                <button data-view="geometry" data-camera="top">Top</button
+                ><button data-view="geometry" data-camera="side">Side</button
+                ><button data-expand="geometry">⛶ Expand</button>
+              </div>
+            </div>
+            <div id="geometry" class="plot large"></div>
+            <div class="plot-legend">
+              <span class="dot teal">Incident beam</span
+              ><span class="dot amber">Through wall</span
+              ><span class="dot coral">Refracted exit</span
+              ><span>Dashed: unrefracted continuation</span>
+            </div>
+          </article>
+          <div class="toolbar">
+            <label
+              >First plane<select id="plane-a">
+                <option>XZ</option>
+                <option>YZ</option>
+                <option>XY</option>
+              </select></label
+            ><label
+              >Second plane<select id="plane-b">
+                <option>YZ</option>
+                <option>XZ</option>
+                <option>XY</option>
+              </select></label
+            ><label
+              >Angle range<select id="sweep-range">
+                <option value="180">0–180°</option>
+                <option value="360">0–360°</option>
+              </select></label
+            ><label
+              >Frame<select id="sweep-frame">
+                <option value="enclosure">Enclosure axes</option>
+                <option value="sensor">Rotated sensor axes</option>
+              </select></label
+            ><button id="export-curves" class="secondary">↓ Curves CSV</button>
+          </div>
+          <div class="grid two">
+            <article class="card">
+              <div class="card-head">
+                <h2 id="curve-a-title">XZ total deflection</h2>
+                <button data-expand="curve-a">⛶</button>
+              </div>
+              <div id="curve-a" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2 id="curve-b-title">YZ total deflection</h2>
+                <button data-expand="curve-b">⛶</button>
+              </div>
+              <div id="curve-b" class="plot"></div>
+            </article>
+          </div>
+          <p class="footnote">
+            Curves show the full 3D angle between incident and exit directions
+            for a planar input sweep. Gaps indicate blocked or internally
+            reflected rays. The shaded 50–130° sector matches the earlier
+            experiments; it is not an aperture constraint.
+          </p>
+        </section>
+        <section id="beam" role="tabpanel" aria-labelledby="tab-beam" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">FOLLOW A SINGLE RAY</p>
+              <h1>Two surfaces. Two refractions.</h1>
+              <p>
+                Inspect the selected beam and surface normals at each boundary.
+              </p>
+            </div>
+          </div>
+          <div id="beam-stats" class="stats"></div>
+          <article class="card">
+            <div class="card-head">
+              <h2>3D optical path</h2>
+              <div class="actions">
+                <button data-focus="beam3d" data-hit="inner">
+                  Inner interface</button
+                ><button data-focus="beam3d" data-hit="outer">
+                  Outer interface</button
+                ><button data-focus="beam3d" data-hit="all">Full path</button
+                ><button data-expand="beam3d">⛶ Expand</button>
+              </div>
+            </div>
+            <div id="beam3d" class="plot large"></div>
+          </article>
+          <div class="grid two">
+            <article class="card">
+              <div class="card-head">
+                <h2 id="beam-a-title">XZ projection</h2>
+                <div class="actions">
+                  <button data-focus="beam-a" data-hit="inner">Inner</button
+                  ><button data-focus="beam-a" data-hit="outer">Outer</button
+                  ><button data-focus="beam-a" data-hit="all">Reset</button
+                  ><button data-expand="beam-a">⛶</button>
+                </div>
+              </div>
+              <div id="beam-a" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2 id="beam-b-title">YZ projection</h2>
+                <div class="actions">
+                  <button data-focus="beam-b" data-hit="inner">Inner</button
+                  ><button data-focus="beam-b" data-hit="outer">Outer</button
+                  ><button data-focus="beam-b" data-hit="all">Reset</button
+                  ><button data-expand="beam-b">⛶</button>
+                </div>
+              </div>
+              <div id="beam-b" class="plot"></div>
+            </article>
+          </div>
+          <p class="footnote">
+            2D panels are projections of the actual 3D ray, with projected shell
+            outlines. A projected hit need not lie on the outline when the ray
+            is outside that plane. Surface angles above are measured in 3D.
+          </p>
+        </section>
+        <section id="atlas" role="tabpanel" aria-labelledby="tab-atlas" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">THE FULL ANGULAR FIELD</p>
+              <h1>Find where distortion is strongest.</h1>
+              <p>
+                Sample sensor directions over a sphere and compare net angular
+                deviation.
+              </p>
+            </div>
+            <button id="export-atlas" class="secondary">↓ Map CSV</button>
+          </div>
+          <div id="atlas-stats" class="stats"></div>
+          <div class="grid two">
+            <article class="card">
+              <div class="card-head">
+                <h2>3D direction map</h2>
+                <button data-expand="atlas3d">⛶</button>
+              </div>
+              <div id="atlas3d" class="plot tall"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>Azimuth × polar angle</h2>
+                <button data-expand="heatmap">⛶</button>
+              </div>
+              <div id="heatmap" class="plot tall"></div>
+            </article>
+          </div>
+          <p class="footnote">
+            Positions on the 3D map represent unit incident directions in
+            enclosure coordinates, not target positions. Colour is total angular
+            deviation in degrees. Blank samples are invalid; hover to inspect
+            values.
+          </p>
+        </section>
+        <section id="cloud" role="tabpanel" aria-labelledby="tab-cloud" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">YOUR DATA, ON YOUR DEVICE</p>
+              <h1>Correct a point cloud.</h1>
+              <p>
+                Load raw sensor-frame points, select the range model, and
+                compare the result.
+              </p>
+            </div>
+          </div>
+          <div class="upload-box">
+            <label class="file-button prominent"
+              >＋ Choose CSV or ASCII PCD<input
+                id="cloud-file"
+                type="file"
+                accept=".csv,.pcd" /></label
+            ><span id="cloud-info"
+              >Files stay in your browser · up to 500,000 points / 80 MB</span
+            ><button id="demo-cloud" class="secondary">
+              Try a synthetic cloud
+            </button>
+          </div>
+          <div class="toolbar">
+            <label
+              >Input units<select id="cloud-unit">
+                <option value="1">Metres</option>
+                <option value=".01">Centimetres</option>
+                <option value=".001">Millimetres</option>
+              </select></label
+            ><label
+              >Range model<select id="cloud-mode">
+                <option value="direction_only">
+                  Direction only · preserve radius
+                </option>
+                <option value="geometric_path">Total geometric path</option>
+                <option value="optical_path">Optical path</option>
+              </select></label
+            ><label
+              >Range reference index<input
+                id="cloud-reference"
+                type="number"
+                value="1.000293"
+                step=".000001"
+                min=".1" /></label
+            ><button id="correct-cloud" class="primary" disabled>
+              Apply correction →</button
+            ><button id="cancel-cloud" class="quiet" hidden>Cancel</button>
+          </div>
+          <p id="range-note" class="footnote"></p>
+          <progress id="cloud-progress" max="1" value="0" hidden></progress>
+          <p id="cloud-status" class="notice">
+            Load a cloud to begin. Use the left panel for enclosure geometry and
+            sensor pose.
+          </p>
+          <div id="cloud-stats" class="stats"></div>
+          <article class="card">
+            <div class="card-head">
+              <h2>Raw / corrected overlay</h2>
+              <div class="actions">
+                <label
+                  ><input type="checkbox" id="show-raw" checked /> Raw</label
+                ><label
+                  ><input type="checkbox" id="show-corrected" checked />
+                  Corrected</label
+                ><button data-expand="cloud3d">⛶ Expand</button>
+              </div>
+            </div>
+            <div id="cloud3d" class="plot large empty"></div>
+          </article>
+          <div class="grid two">
+            <article class="card">
+              <div class="card-head"><h2>Correction magnitude</h2></div>
+              <div id="cloud-hist" class="plot empty"></div>
+            </article>
+            <article class="card info-card">
+              <h2>Export your results</h2>
+              <p>
+                Colours show the displacement applied (mm), not accuracy against
+                a surveyed reference. Preview uses up to 20,000 points; exports
+                retain every row.
+              </p>
+              <div class="button-pair">
+                <button id="export-pcd" class="secondary" disabled>
+                  ↓ Corrected PCD</button
+                ><button id="export-csv" class="secondary" disabled>
+                  ↓ Corrected CSV
+                </button>
+              </div>
+              <button id="export-report" class="secondary full" disabled>
+                ↓ Run report + row status JSON
+              </button>
+              <p class="micro">
+                Invalid points become NaN. PCD input retains its non-XYZ fields.
+                CSV → PCD exports XYZ only; use CSV to retain CSV attributes.
+                Downloads use the original units and sensor frame.
+              </p>
+            </article>
+          </div>
+        </section>
+        <section id="scene" role="tabpanel" aria-labelledby="tab-scene" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">BUILD A CONTROLLED EXPERIMENT</p>
+              <h1>A scene with known truth.</h1>
+              <p>
+                Place targets and a sensor, simulate optical ranges, then
+                reconstruct the cloud.
+              </p>
+            </div>
+            <div class="actions">
+              <button id="save-scene" class="secondary">↓ Scene JSON</button
+              ><label class="file-button"
+                >↑ Load scene<input id="load-scene" type="file" accept=".json"
+              /></label>
+            </div>
+          </div>
+          <div class="scene-editors">
+            <article class="card info-card">
+              <h2>Scene objects</h2>
+              <div class="button-pair">
+                <select id="object-list" aria-label="Selected object"></select
+                ><button id="remove-object" class="quiet">Remove</button>
+              </div>
+              <div class="button-pair">
+                <select id="new-object" aria-label="New object type">
+                  <option value="plane">Plane</option>
+                  <option value="sphere">Sphere</option>
+                  <option value="box">Box</option></select
+                ><button id="add-object" class="secondary">
+                  ＋ Add target
+                </button>
+              </div>
+              <label>Name<input id="object-name" maxlength="100" /></label>
+              <p class="micro">World position (m)</p>
+              <div class="triple">
+                <label>X<input id="object-x" type="number" step=".1" /></label
+                ><label>Y<input id="object-y" type="number" step=".1" /></label
+                ><label>Z<input id="object-z" type="number" step=".1" /></label>
+              </div>
+              <p class="micro">
+                Size (m): plane width/height; sphere radius in X; box full
+                dimensions
+              </p>
+              <div class="triple">
+                <label
+                  >X<input
+                    id="object-sx"
+                    type="number"
+                    min=".01"
+                    step=".1" /></label
+                ><label
+                  >Y<input
+                    id="object-sy"
+                    type="number"
+                    min=".01"
+                    step=".1" /></label
+                ><label
+                  >Z<input id="object-sz" type="number" min=".01" step=".1"
+                /></label>
+              </div>
+              <div class="triple">
+                <label
+                  >Roll °<input
+                    id="object-roll"
+                    type="number"
+                    step="5" /></label
+                ><label
+                  >Pitch °<input
+                    id="object-pitch"
+                    type="number"
+                    step="5" /></label
+                ><label
+                  >Yaw °<input id="object-yaw" type="number" step="5"
+                /></label>
+              </div>
+            </article>
+            <article class="card info-card">
+              <h2>Sensor stations</h2>
+              <div class="button-pair">
+                <select id="station-list" aria-label="Selected sensor station">
+                  <option value="0">LiDAR 1</option></select
+                ><button id="add-station" class="secondary">? Station</button>
+              </div>
+              <button id="remove-station" class="quiet">
+                Remove selected station
+              </button>
+              <p class="micro">
+                Each station retains its own dome, material, source offset and
+                tilt. Simulate and export the selected station.
+              </p>
+              <p class="micro">
+                Place the enclosure frame in the world. The source offset, local
+                tilt and material come from the left panel.
+              </p>
+              <div class="triple">
+                <label
+                  >World X (m)<input
+                    id="world-x"
+                    type="number"
+                    value="0"
+                    step=".1" /></label
+                ><label
+                  >World Y (m)<input
+                    id="world-y"
+                    type="number"
+                    value="0"
+                    step=".1" /></label
+                ><label
+                  >World Z (m)<input
+                    id="world-z"
+                    type="number"
+                    value="0"
+                    step=".1"
+                /></label>
+              </div>
+              <div class="triple">
+                <label
+                  >Roll °<input
+                    id="world-roll"
+                    type="number"
+                    value="0"
+                    step="5" /></label
+                ><label
+                  >Pitch °<input
+                    id="world-pitch"
+                    type="number"
+                    value="0"
+                    step="5" /></label
+                ><label
+                  >Yaw °<input id="world-yaw" type="number" value="0" step="5"
+                /></label>
+              </div>
+              <p class="micro">
+                Click a target in the scene to move it to that sampled location,
+                or edit its exact coordinates above.
+              </p>
+              <label
+                >Click interaction<select id="scene-click">
+                  <option value="inspect">Inspect only</option>
+                  <option value="sensor">Place sensor at clicked point</option>
+                  <option value="object">
+                    Move selected object to clicked point
+                  </option>
+                </select></label
+              >
+              <div class="pair">
+                <label
+                  >Samples per axis<input
+                    id="resolution"
+                    type="number"
+                    min="5"
+                    max="151"
+                    value="65"
+                    step="10" /></label
+                ><label
+                  >Field of view °<input
+                    id="fov"
+                    type="number"
+                    min="1"
+                    max="160"
+                    value="65"
+                    step="5"
+                /></label>
+              </div>
+              <label
+                >Reconstruction<select id="scene-mode">
+                  <option value="optical_path">
+                    Full optical-path correction
+                  </option>
+                  <option value="direction_only">
+                    Direction-only correction
+                  </option>
+                  <option value="geometric_path">
+                    Geometric-path assumption
+                  </option>
+                </select></label
+              ><button id="simulate" class="primary full">
+                Simulate scene →</button
+              ><label class="check"
+                ><input id="scene-auto" type="checkbox" checked /> Re-simulate
+                edits automatically</label
+              >
+            </article>
+          </div>
+          <p id="scene-status" class="notice">
+            Ready. Targets are opaque, ideal surfaces; the closest positive
+            intersection is returned.
+          </p>
+          <div id="scene-stats" class="stats"></div>
+          <article class="card">
+            <div class="card-head">
+              <h2>Scene & reconstructed returns</h2>
+              <div class="actions">
+                <select id="scene-layer" aria-label="Scene layer">
+                  <option value="all">Compare all layers</option>
+                  <option value="bare">No enclosure</option>
+                  <option value="raw">With enclosure · raw</option>
+                  <option value="truth">Refracted-hit truth</option>
+                  <option value="corrected">
+                    Corrected · error colour
+                  </option></select
+                ><button data-expand="scene3d">⛶ Expand</button>
+              </div>
+            </div>
+            <div id="scene3d" class="plot large"></div>
+          </article>
+          <div class="grid two">
+            <article class="card">
+              <div class="card-head"><h2>3D reconstruction error</h2></div>
+              <div id="scene-errors" class="plot"></div>
+            </article>
+            <article class="card info-card">
+              <h2>Save the experiment</h2>
+              <label
+                >Cloud to export<select id="scene-export-layer">
+                  <option value="bare">No-enclosure world cloud</option>
+                  <option value="raw">Raw world cloud</option>
+                  <option value="truth">Refracted-hit truth (world)</option>
+                  <option value="corrected">Corrected world cloud</option>
+                  <option value="rawLocal">Raw sensor-frame cloud</option>
+                  <option value="correctedLocal">
+                    Corrected sensor-frame cloud
+                  </option>
+                </select></label
+              >
+              <div class="button-pair">
+                <button id="scene-pcd" class="secondary" disabled>↓ PCD</button
+                ><button id="scene-csv" class="secondary" disabled>
+                  ↓ CSV
+                </button>
+              </div>
+              <button id="scene-report" class="secondary full" disabled>
+                ↓ Metrics + configuration
+              </button>
+              <p class="micro">
+                The no-enclosure rays can hit different surface points. Errors
+                are measured against the corresponding refracted-hit truth.
+                Exact-model correction approaches numerical zero by
+                construction; this is a consistency test, not measured sensor
+                accuracy.
+              </p>
+            </article>
+          </div>
+        </section>
+        <section id="learn" role="tabpanel" aria-labelledby="tab-learn" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">UNDERSTAND THE MODEL</p>
+              <h1>Refraction, made visible.</h1>
+              <p>The assumptions behind the pictures and the numbers.</p>
+            </div>
+          </div>
+          <div class="grid two">
+            <article class="card info-card">
+              <span class="step-number">01</span>
+              <h2>Meet the inner surface</h2>
+              <p>
+                A ray travels from the source to the inner sphere. The surface
+                normal points radially away from the dome centre. A centred
+                source hits normally and has no angular deflection.
+              </p>
+              <div class="equation">
+                P = O + t d &nbsp; · &nbsp; |P − C| = R
+              </div>
+            </article>
+            <article class="card info-card">
+              <span class="step-number">02</span>
+              <h2>Apply Snell’s law twice</h2>
+              <p>
+                The ray bends toward the normal entering a higher-index
+                material, then bends again on leaving it. The two normals
+                differ, so the bends do not generally cancel.
+              </p>
+              <div class="equation">n₁ sin θ₁ = n₂ sin θ₂</div>
+              <p>
+                When no transmitted ray exists, total internal reflection is
+                reported instead of drawing a fictitious ray.
+              </p>
+            </article>
+            <article class="card info-card">
+              <span class="step-number">03</span>
+              <h2>Recover the endpoint</h2>
+              <p>
+                Direction-only correction keeps the reported radius. Full path
+                correction starts at the actual outer hit and accounts for
+                travel inside the enclosure.
+              </p>
+              <div class="equation">
+                P = P<sub>outer</sub> + L<sub>outside</sub> d<sub>exit</sub>
+              </div>
+              <p>
+                Optical mode assumes n<sub>ref</sub> r = Σ nᵢ Lᵢ. A sensor’s
+                reported time-of-flight range already includes the round-trip
+                factor; do not halve it again.
+              </p>
+            </article>
+            <article class="card info-card">
+              <span class="step-number">04</span>
+              <h2>Use the right material data</h2>
+              <p>
+                Refraction uses phase refractive index. Pulse timing depends on
+                group index, which may differ. This app uses the same configured
+                index for both, matching the simplified Python model. For
+                precision range work, characterize dispersion and instrument
+                bias.
+              </p>
+              <p>
+                Nominal polymer values are starting points, not validated
+                infrared values or structural recommendations.
+              </p>
+            </article>
+          </div>
+          <article class="card info-card">
+            <h2>Material presets & sources</h2>
+            <div id="material-table"></div>
+            <p>
+              Air defaults to the project's legacy constant. Outside-medium
+              indices are editable. Surface reflection losses, absorption,
+              scattering, coatings, finite beam width, housing rims,
+              nonconcentric surfaces, detector offsets and multipath are not
+              modeled.
+            </p>
+          </article>
+          <article class="card info-card">
+            <h2>Coordinate conventions</h2>
+            <p>
+              All physics runs in metres. Enclosure controls use millimetres;
+              scene controls use metres. Sensor +Z is forward. Roll, pitch, yaw
+              form the right-handed active rotation Rz Ry Rx. In a planar sweep,
+              0° is the first named axis and 90° is the second: XZ sweeps from
+              +X to +Z; YZ from +Y to +Z; XY from +X to +Y.
+            </p>
+            <p>
+              Only the upper shell (relative to the centre Z) is active in
+              hemisphere mode. A source can lie below the equatorial plane if it
+              remains inside the sphere; no base plate is simulated. Python
+              configuration JSON preserves the exact rotation matrix.
+            </p>
+          </article>
+          <article class="card info-card">
+            <h2>Cite the research</h2>
+            <p>
+              Ranasinghe, P., Patra, D., Mawathage, A., Banerjee, B., Ye, C.,
+              Nan, B., & Raval, S. (2026).
+              <em
+                >Correcting time offsets and enclosure-induced measurement
+                distortions in LiDAR–camera systems.</em
+              >
+              Measurement, 285, 122285.
+            </p>
+            <a
+              href="https://doi.org/10.1016/j.measurement.2026.122285"
+              target="_blank"
+              rel="noopener"
+              >Read the paper ↗</a
+            >
+            <p>
+              This app extends the spherical ray model. It does not reproduce
+              the paper’s full calibration or lookup-table workflow. Scene
+              results are synthetic.
+            </p>
+          </article>
+        </section>
+        <footer>
+          Enclosure Lab <span>·</span> Spherical refraction research toolkit
+          <span>·</span>
+          <a
+            href="https://github.com/maninka123/enclosure-aware-lidar-correction"
+            >Source & documentation</a
+          >
+        </footer>
+      </main>
+    </div>
+    <dialog id="plot-dialog">
+      <div class="dialog-head">
+        <h2>Expanded view</h2>
+        <button id="close-dialog" aria-label="Close expanded view">
+          Close ×
+        </button>
+      </div>
+      <div id="dialog-content"></div>
+    </dialog>
+    <noscript
+      >This app requires JavaScript for local ray tracing and interactive
+      figures.</noscript
+    >
+  </body>
+</html>

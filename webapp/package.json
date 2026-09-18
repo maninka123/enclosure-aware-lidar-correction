@@ -1,0 +1,21 @@
+{
+  "name": "enclosure-aware-lidar-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/physics.test.mjs",
+    "test:browser": "playwright test",
+    "format": "prettier --write index.html style.css src scripts tests playwright.config.js package.json",
+    "check": "prettier --check index.html style.css src scripts tests playwright.config.js package.json"
+  },
+  "dependencies": {
+    "plotly.js-dist-min": "4.1.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "prettier": "3.9.8"
+  }
+}

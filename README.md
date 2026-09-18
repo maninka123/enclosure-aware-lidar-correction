@@ -2,12 +2,21 @@
 
 [![Paper DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.measurement.2026.122285-blue)](https://doi.org/10.1016/j.measurement.2026.122285)
 [![Cite this work](https://img.shields.io/badge/Cite-this%20work-green)](#citation)
+[![Open web app](https://img.shields.io/badge/Web_app-Enclosure_Lab-087f83)](https://maninka123.github.io/enclosure-aware-lidar-correction/)
 
 A standalone Python implementation of the two-interface spherical-dome method in the original MATLAB and `Python duplication` experiments. It extends the existing 2D vector ray trace to 3D, with reproducible experiments and a point-cloud correction command.
 
 This repository accompanies the enclosure-refraction topic in [Ranasinghe et al. (2026), *Correcting time offsets and enclosure-induced measurement distortions in LiDAR–camera systems*](https://doi.org/10.1016/j.measurement.2026.122285), published in **Measurement, Volume 285, Article 122285**.
 
 **Scope:** 3D spherical-dome refraction correction and synthetic validation. See [implementation coverage](docs/codebase_review.md) for the relationship to the paper.
+
+## Interactive app
+
+**[Launch Enclosure Lab →](https://maninka123.github.io/enclosure-aware-lidar-correction/)**
+
+Design a dome, position and rotate the LiDAR, inspect 2D/3D beam paths, and explore XY/XZ/YZ deflection curves. Separate tabs provide a 3D deviation map, local CSV/PCD correction, a scene builder with sensor stations, and explanations of the physics. Configurations, plots, point clouds and reports can be downloaded.
+
+The app runs entirely in your browser. Uploaded clouds stay on your device. See the [web app guide](webapp/README.md) for supported formats, material sources, scene assumptions and local development.
 
 ## Install and run
 
@@ -79,6 +88,7 @@ All internal distances are metres. Rotation maps sensor vectors into enclosure c
 
 ```text
 src/dome_correction/   physics, configuration, I/O, correction, experiments, CLI
+webapp/               interactive browser app, scene lab and browser tests
 configs/              explicit baseline and historical configurations
 tests/                physical invariants, reconstruction and I/O checks
 docs/                 derivation, codebase review and validation plan
