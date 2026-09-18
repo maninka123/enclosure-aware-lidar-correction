@@ -982,3 +982,140 @@ dialog::backdrop {
     border-color: #687580;
   }
 }
+
+/* Workbench hierarchy: grouped inspector, nearby plot controls, readable labels. */
+.controls {
+  background: #f0f1f4;
+  padding: 1.4rem 1rem;
+}
+.control-heading {
+  padding: 0 0.4rem;
+  margin-bottom: 1.1rem;
+}
+.controls details {
+  background: #fff;
+  border: 1px solid #e0e3e8;
+  border-radius: 0.9rem;
+  padding: 1rem;
+  margin: 0 0 0.9rem;
+}
+.controls summary {
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+}
+.controls label,
+.toolbar label {
+  font-size: 0.85rem;
+  color: #4b5965;
+}
+.controls .micro {
+  font-size: 0.8rem;
+}
+.controls input:not([type="range"]):not([type="checkbox"]),
+.controls select {
+  min-height: 2.6rem;
+  font-size: 0.9rem;
+  border-radius: 0.55rem;
+}
+.controls .pair,
+.controls .triple {
+  gap: 0.55rem;
+}
+.medium-selectors {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.controls button[data-add-material] {
+  border: 0;
+  color: var(--teal);
+  padding: 0.55rem 0.3rem;
+  background: transparent;
+  text-align: left;
+}
+.controls button[data-add-material]:hover {
+  background: var(--light);
+}
+#designer > .toolbar {
+  background: #eceef2;
+  border: 1px solid #e0e3e8;
+  border-radius: 0.9rem;
+  padding: 0.25rem 1rem;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+#designer > .toolbar label {
+  flex: 1 1 110px;
+}
+#designer > .toolbar select {
+  margin-top: 0.35rem;
+}
+#designer > .toolbar button {
+  align-self: center;
+}
+.card-head h2 {
+  font-size: 0.98rem;
+}
+.card-head p,
+.card-head button {
+  font-size: 0.8rem;
+}
+.card-head button {
+  min-height: 2.3rem;
+}
+.stat {
+  padding: 1rem 1.2rem;
+}
+.stat small {
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.stat strong {
+  font-size: 1.65rem;
+}
+.page-heading p:not(.eyebrow) {
+  font-size: 0.95rem;
+}
+#material-dialog {
+  padding: 1.75rem;
+}
+#material-dialog input {
+  padding: 0.85rem;
+  font-size: 1rem;
+}
+#material-dialog .primary {
+  min-height: 3rem;
+}
+@media (min-width: 1101px) {
+  .shell {
+    grid-template-columns: 310px minmax(0, 1fr);
+  }
+  main {
+    padding: 2rem;
+  }
+}
+@media (max-width: 700px) {
+  .controls {
+    padding: 1rem;
+  }
+  #designer > .toolbar {
+    gap: 0.6rem;
+    padding: 0.6rem;
+  }
+  #designer > .toolbar label {
+    flex-basis: 40%;
+    margin: 0.2rem 0;
+  }
+  .page-heading {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 1100px) {
+  .designer-overview .plot.large {
+    flex: none;
+    height: 350px;
+  }
+}

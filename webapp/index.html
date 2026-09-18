@@ -17,8 +17,7 @@
       <a class="brand" href="#designer"
         ><span class="brand-icon">◉</span
         ><span
-          >ENCLOSURE <b>LAB</b
-          ><small>LiDAR optics / interactive research workspace</small></span
+          >Enclosure <b>Lab</b><small>LiDAR optics workspace</small></span
         ></a
       >
       <div class="toplinks">
@@ -98,11 +97,11 @@
     <div class="shell controls-collapsed">
       <aside class="controls" aria-label="Enclosure and sensor parameters">
         <div class="control-heading">
-          <h2>Your optical system</h2>
+          <h2>Parameters</h2>
           <span id="live-state" class="tag">LIVE</span>
         </div>
         <details open>
-          <summary>01 / Enclosure geometry</summary>
+          <summary>Enclosure geometry</summary>
           <div class="pair">
             <label
               >Inner radius <em>mm</em
@@ -144,7 +143,7 @@
           </div>
         </details>
         <details open>
-          <summary>02 / Materials</summary>
+          <summary>Materials & media</summary>
           <label
             >Dome material<select id="material">
               <option value="custom">Custom / measured index</option>
@@ -178,7 +177,7 @@
             /></label>
           </div>
           <p id="material-note" class="micro"></p>
-          <div class="pair">
+          <div class="medium-selectors">
             <label>Inside medium<select id="inside-material"></select></label>
             <label>Outside medium<select id="outside-material"></select></label>
           </div>
@@ -211,7 +210,7 @@
           <p id="medium-note" class="micro"></p>
         </details>
         <details open>
-          <summary>03 / LiDAR position & orientation</summary>
+          <summary>LiDAR position & orientation</summary>
           <div class="triple">
             <label
               >X <em>mm</em
@@ -240,7 +239,7 @@
           </p>
         </details>
         <details open>
-          <summary>04 / Selected beam</summary>
+          <summary>Selected beam</summary>
           <label
             >Polar angle from sensor +Z <output id="polar-out">25°</output
             ><input
@@ -286,8 +285,8 @@
         <section id="designer" role="tabpanel" aria-labelledby="tab-designer">
           <div class="page-heading">
             <div>
-              <p class="eyebrow">DESIGN / TRACE / COMPARE</p>
-              <h1>See what your enclosure changes.</h1>
+              <p class="eyebrow">ENCLOSURE DESIGNER</p>
+              <h1>Design your optical system.</h1>
               <p>
                 Move the LiDAR, shape the dome, and watch refraction respond.
               </p>
@@ -295,6 +294,31 @@
             <button id="pin" class="secondary">Pin a comparison</button>
           </div>
           <div id="designer-stats" class="stats"></div>
+          <div class="toolbar">
+            <label
+              >First plane<select id="plane-a">
+                <option>XZ</option>
+                <option>YZ</option>
+                <option>XY</option>
+              </select></label
+            ><label
+              >Second plane<select id="plane-b">
+                <option>YZ</option>
+                <option>XZ</option>
+                <option>XY</option>
+              </select></label
+            ><label
+              >Angle range<select id="sweep-range">
+                <option value="180">0–180°</option>
+                <option value="360">0–360°</option>
+              </select></label
+            ><label
+              >Frame<select id="sweep-frame">
+                <option value="enclosure">Enclosure axes</option>
+                <option value="sensor">Rotated sensor axes</option>
+              </select></label
+            ><button id="export-curves" class="secondary">↓ Curves CSV</button>
+          </div>
           <div class="grid two designer-overview">
             <article class="card">
               <div class="card-head">
@@ -354,31 +378,6 @@
             not meet the dome outlines. Scroll to zoom; use Wall detail to
             inspect refraction.
           </p>
-          <div class="toolbar">
-            <label
-              >First plane<select id="plane-a">
-                <option>XZ</option>
-                <option>YZ</option>
-                <option>XY</option>
-              </select></label
-            ><label
-              >Second plane<select id="plane-b">
-                <option>YZ</option>
-                <option>XZ</option>
-                <option>XY</option>
-              </select></label
-            ><label
-              >Angle range<select id="sweep-range">
-                <option value="180">0–180°</option>
-                <option value="360">0–360°</option>
-              </select></label
-            ><label
-              >Frame<select id="sweep-frame">
-                <option value="enclosure">Enclosure axes</option>
-                <option value="sensor">Rotated sensor axes</option>
-              </select></label
-            ><button id="export-curves" class="secondary">↓ Curves CSV</button>
-          </div>
           <div class="grid two">
             <article class="card">
               <div class="card-head">
