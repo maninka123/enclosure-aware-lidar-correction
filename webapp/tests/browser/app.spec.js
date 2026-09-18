@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 test("designer, materials, beam inspection and atlas", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -74,6 +75,24 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   await expect(page.locator("#nwall")).toHaveValue("1.52");
   await page.locator("#station-list").selectOption("1");
   await expect(page.locator("#nwall")).toHaveValue("1.6");
+  await page.locator("#material").selectOption("pc");
+  const saved = page.waitForEvent("download");
+  await page.locator("#save-scene").click();
+  const sceneFile = await readFile(await (await saved).path());
+  await page.locator("#remove-station").click();
+  await page
+    .locator("#load-scene")
+    .setInputFiles({
+      name: "scene.json",
+      mimeType: "application/json",
+      buffer: sceneFile,
+    });
+  await expect(page.locator("#station-list option")).toHaveCount(2);
+  await expect(page.locator("#material")).toHaveValue("pc");
+  await page.locator("#station-list").selectOption("0");
+  await expect(page.locator("#material")).toHaveValue("custom");
+  await page.locator("#station-list").selectOption("1");
+  await expect(page.locator("#material")).toHaveValue("pc");
   await page.locator("#simulate").click();
   await expect(page.locator("#scene-pcd")).toBeEnabled();
   await page.evaluate(() => window.scrollTo(0, 0));

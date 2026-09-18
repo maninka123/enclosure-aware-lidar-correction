@@ -165,6 +165,20 @@ function materialNote() {
   $("nwall").readOnly = key !== "custom";
   $("wavelength").disabled = key !== "bk7";
 }
+function materialSettings() {
+  return { preset: $("material").value, wavelength_nm: val("wavelength") };
+}
+function restoreMaterial(settings) {
+  if (!settings) return;
+  if (
+    !Object.hasOwn(materials, settings.preset) ||
+    !Number.isFinite(settings.wavelength_nm)
+  )
+    throw Error("Invalid material settings in scene.");
+  $("material").value = settings.preset;
+  $("wavelength").value = settings.wavelength_nm;
+  materialNote();
+}
 function updateMaterial() {
   try {
     const n = indexFor($("material").value, val("wavelength"));
@@ -612,6 +626,7 @@ $("correct-cloud").onclick = async () => {
     cloudResult = r;
     cloudRun = {
       config: toPython(c),
+      material: materialSettings(),
       range_model: mode,
       range_reference_index: mode === "optical_path" ? reference : null,
       input_unit: factor === 1 ? "m" : factor === 0.01 ? "cm" : "mm",
@@ -777,6 +792,7 @@ function worldPose() {
 function sceneSnapshot() {
   return {
     config: toPython(readConfig()),
+    material: materialSettings(),
     objects: structuredClone(readObjects()),
     pose: worldPose(),
     resolution: val("resolution"),
@@ -788,6 +804,7 @@ function storeStation() {
   stations[stationIndex] = {
     name: stations[stationIndex].name,
     config: toPython(readConfig()),
+    material: materialSettings(),
     pose: worldPose(),
   };
 }
@@ -800,6 +817,7 @@ function selectStation(index) {
   stationIndex = index;
   const station = stations[index];
   applyConfig(fromPython(station.config));
+  restoreMaterial(station.material);
   ["world-x", "world-y", "world-z"].forEach(
     (id, i) => ($(id).value = station.pose.position[i]),
   );
@@ -1107,6 +1125,7 @@ $("load-scene").onchange = async (e) => {
     }
     stationMenu();
     applyConfig(c);
+    restoreMaterial(data.material);
     objects = data.objects;
     ["world-x", "world-y", "world-z"].forEach(
       (id, i) => ($(id).value = data.pose.position[i]),
