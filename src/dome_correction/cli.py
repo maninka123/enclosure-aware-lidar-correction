@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from .config import load_config, config_dict
 from .correction import correct_points
-from .cloud_io import read_cloud, write_cloud
+from .cloud_io import read_cloud, write_cloud, write_table
 
 
 def main(argv=None):
@@ -43,7 +43,6 @@ def main(argv=None):
                                     range_reference_index=args.range_reference_index, chunk_size=args.chunk_size)
             output.parent.mkdir(parents=True, exist_ok=True)
             write_cloud(output, cloud, result.points / factor)
-            from .experiments import write_table
             write_table(status_path, ["row_index", "valid", "status"],
                         zip(range(len(result.points)), result.valid, result.status))
             report = {"config": config_dict(dome, origin, rotation), "input": str(Path(args.input)),
@@ -53,7 +52,7 @@ def main(argv=None):
                       "invalid_policy": "preserve rows; XYZ replaced with NaN; other fields unchanged"}
             report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps(report, indent=2))
-    except (ValueError, KeyError, TypeError, OSError) as exc:
+    except (ValueError, KeyError, TypeError, OSError, UnicodeError) as exc:
         parser.exit(2, f"Error: {exc}\n")
 
 

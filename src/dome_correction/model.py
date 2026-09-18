@@ -1,5 +1,6 @@
 """Vector Snell refraction through two concentric spherical surfaces."""
 from dataclasses import dataclass
+from numbers import Real
 import numpy as np
 
 
@@ -14,10 +15,18 @@ class Dome:
     upper_only: bool = True
 
     def __post_init__(self):
+        for name in ("inner_radius_m", "thickness_m", "n_inside", "n_wall", "n_outside"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, Real):
+                raise ValueError(f"{name} must be a number.")
+            object.__setattr__(self, name, float(value))
         values = np.asarray([self.inner_radius_m, self.thickness_m,
                              self.n_inside, self.n_wall, self.n_outside], float)
         if not np.all(np.isfinite(values)) or np.any(values <= 0):
             raise ValueError("Radii, thickness and refractive indices must be finite and positive.")
+        outer = self.inner_radius_m + self.thickness_m
+        if not np.isfinite(outer) or outer <= self.inner_radius_m:
+            raise ValueError("Outer radius must be finite and numerically larger than inner radius.")
         center = np.asarray(self.center_m, float)
         if center.shape != (3,) or not np.all(np.isfinite(center)):
             raise ValueError("center_m must be a finite 3-vector.")
@@ -57,8 +66,13 @@ def _refract(direction, normal, n1, n2):
 def _exit_sphere(origin, direction, center, radius):
     relative = origin - center
     projection = np.sum(relative * direction, axis=1)
-    discriminant = projection**2 + radius**2 - np.sum(relative**2, axis=-1)
-    distance = -projection + np.sqrt(np.maximum(discriminant, 0))
+    radial_distance = np.linalg.norm(relative, axis=-1)
+    gap = (radius - radial_distance) * (radius + radial_distance)
+    discriminant = projection**2 + gap
+    root = np.sqrt(np.maximum(discriminant, 0))
+    distance = root - projection
+    # Equivalent positive root without cancellation near a surface.
+    np.divide(gap, root + projection, out=distance, where=projection > 0)
     valid = (discriminant >= -1e-14) & (distance > 0)
     hit = origin + distance[:, None] * direction
     return hit, distance, valid
@@ -78,7 +92,7 @@ def trace_rays(directions, origin_m, dome=None):
         raise ValueError("origin_m must be a finite 3-vector.")
     if np.linalg.norm(origin - center) >= dome.inner_radius_m:
         raise ValueError("LiDAR origin must be strictly inside the inner sphere.")
-    lengths = np.linalg.norm(direction, axis=1)
+    lengths = np.hypot.reduce(direction, axis=1)
     valid = np.isfinite(direction).all(axis=1) & np.isfinite(lengths) & (lengths > 0)
     status = np.where(valid, "ok", "invalid_direction").astype("U32")
     direction[~valid] = (0, 0, 1)

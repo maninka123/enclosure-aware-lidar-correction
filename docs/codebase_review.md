@@ -2,6 +2,8 @@
 
 Associated paper: Ranasinghe et al. (2026), [*Correcting time offsets and enclosure-induced measurement distortions in LiDAR–camera systems*](https://doi.org/10.1016/j.measurement.2026.122285), *Measurement* 285, 122285. This repository currently covers the spherical-dome refraction component and a 3D extension; paper-wide reproduction has not been established.
 
+The paper's lookup-table workflow, temporal calibration, and camera intrinsic/extrinsic calibration are not implemented here. Numbered equations and figures have not yet been mapped individually to the code. The baseline simulation uses a 4 mm wall; the paper describes a 6 mm dome.
+
 Inspected source files include `calculate_deflection.m`, `calculate_deflection2.m`, `dome_beam_refraction.py`, `sensitivity_analysis_our_method.py`, `simulate_1m_length_measurement.py`, the comparison scripts, and the embedded MATLAB source in `Correct_PCD.mlx`, `Correction_onePoint.mlx`, and `Create3D_Maketable.mlx`.
 
 | Existing component | Behavior | New implementation |

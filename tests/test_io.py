@@ -33,3 +33,31 @@ class IOTests(unittest.TestCase):
             path.write_bytes(b'DATA binary\n\x00\x01')
             with self.assertRaisesRegex(ValueError, "ASCII"):
                 read_cloud(path)
+
+    def test_empty_csv_has_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/"empty.csv"
+            path.write_text("")
+            with self.assertRaisesRegex(ValueError, "empty"):
+                read_cloud(path)
+            path.write_text("x,y,z\n")
+            self.assertEqual(read_cloud(path).points.shape, (0, 3))
+
+    def test_pcd_whitespace_and_header_case(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, dst = Path(tmp)/"raw.pcd", Path(tmp)/"out.pcd"
+            src.write_text('fields\tx y z\nsize 4 4 4\ntype F F F\nwidth 1\nheight 1\npoints 1\ndata ascii\n1 2 5\n')
+            cloud = read_cloud(src)
+            write_cloud(dst, cloud, [[3, 4, 6]])
+            np.testing.assert_array_equal(read_cloud(dst).points, [[3, 4, 6]])
+
+    def test_malformed_pcd_headers_are_rejected(self):
+        header = 'FIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nWIDTH 1\nHEIGHT 1\nPOINTS 1\nDATA ascii\n1 2 5\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/"bad.pcd"
+            for bad in (header.replace('SIZE 4 4 4\n', ''),
+                        header.replace('POINTS 1', 'POINTS'),
+                        header.replace('SIZE 4 4 4', 'SIZE 3 4 4')):
+                path.write_text(bad)
+                with self.assertRaises(ValueError):
+                    read_cloud(path)

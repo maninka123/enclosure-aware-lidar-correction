@@ -38,3 +38,5 @@ For reciprocal monostatic time-of-flight, the factor of two is already removed b
 Direction-only mode returns `Q.T*(r*d_exit)` instead. It approximates the exit ray as originating at the LiDAR source. Independent 2D projected corrections are generally not equivalent to full 3D tracing when the source and ray are outside the chosen plane.
 
 Sensitivity endpoints are 5 m beyond each outer hit, matching the existing script. They are not intersections with a common target plane. The normalized 1 m metric uses baseline endpoint pairs 0.9–1.1 m apart and scales length changes to 1 m; it is not an exact simulated ruler. The synthetic plane experiment separately constructs intersections with the enclosure plane z=5 m and simulates optical ranges.
+
+The signed angle sweep measures the change of direction projected onto XZ. For an off-plane source, this differs from the full 3D angular deviation; both values are exported separately. Sensitivity variations that make the geometry invalid are recorded with zero valid rays and an explanation in the detail table, rather than stopping the run.

@@ -21,7 +21,7 @@ def rotation_matrix(value):
 
 
 def correct_points(points, dome=None, *, origin_m=(0, 0, 0),
-                   sensor_to_dome_rotation=np.eye(3), range_model,
+                   sensor_to_dome_rotation=None, range_model,
                    range_reference_index=None, chunk_size=100000):
     """Correct local sensor XYZ in metres, preserving row order and sensor frame.
 
@@ -31,15 +31,18 @@ def correct_points(points, dome=None, *, origin_m=(0, 0, 0),
     The optical model assumes a reciprocal monostatic path and no range offset.
     """
     dome = Dome() if dome is None else dome
+    origin_m = np.asarray(origin_m, dtype=float)
     raw = vectors(points, "points")
-    rotation = rotation_matrix(sensor_to_dome_rotation)
+    rotation = rotation_matrix(np.eye(3) if sensor_to_dome_rotation is None else sensor_to_dome_rotation)
     if range_model not in ("direction_only", "geometric_path", "optical_path"):
         raise ValueError("Select direction_only, geometric_path or optical_path.")
     if range_model == "optical_path":
         if (range_reference_index is None or not np.isfinite(range_reference_index)
                 or range_reference_index <= 0):
             raise ValueError("optical_path requires a positive range_reference_index.")
-    if not isinstance(chunk_size, int) or chunk_size <= 0:
+    elif range_reference_index is not None:
+        raise ValueError("range_reference_index is only used with optical_path.")
+    if isinstance(chunk_size, bool) or not isinstance(chunk_size, int) or chunk_size <= 0:
         raise ValueError("chunk_size must be a positive integer.")
     # Validate geometry even for empty input.
     trace_rays(np.empty((0, 3)), origin_m, dome)
@@ -49,8 +52,11 @@ def correct_points(points, dome=None, *, origin_m=(0, 0, 0),
     for start in range(0, len(raw), chunk_size):
         stop = min(start + chunk_size, len(raw))
         part = raw[start:stop]
-        radius = np.linalg.norm(part, axis=1)
-        trace = trace_rays(part @ rotation.T, origin_m, dome)
+        radius = np.hypot.reduce(part, axis=1)
+        usable = np.isfinite(part).all(axis=1) & np.isfinite(radius) & (radius > 0)
+        unit = np.zeros_like(part)
+        np.divide(part, radius[:, None], out=unit, where=usable[:, None])
+        trace = trace_rays(unit @ rotation.T, origin_m, dome)
         ok = trace.valid.copy()
         reason = trace.status.copy()
         if range_model == "direction_only":
@@ -62,7 +68,7 @@ def correct_points(points, dome=None, *, origin_m=(0, 0, 0),
                 remaining = (range_reference_index * radius
                              - dome.n_inside * trace.inside_length_m
                              - dome.n_wall * trace.wall_length_m) / dome.n_outside
-            outside = remaining >= 0
+            outside = np.isfinite(remaining) & (remaining >= 0)
             reason[ok & ~outside] = "range_before_outer_surface"
             ok &= outside
             local = trace.outer_hit + remaining[:, None] * trace.exit_direction - origin_m

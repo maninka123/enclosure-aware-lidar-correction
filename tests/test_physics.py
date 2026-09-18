@@ -47,7 +47,7 @@ class PhysicsTests(unittest.TestCase):
         dome = Dome(n_inside=1.2, n_wall=1.2, n_outside=1.2)
         for mode in ("direction_only", "geometric_path", "optical_path"):
             r = correct_points(points, dome, origin_m=(-.02, 0, .02445),
-                               range_model=mode, range_reference_index=1.2)
+                               range_model=mode, range_reference_index=1.2 if mode == "optical_path" else None)
             np.testing.assert_allclose(r.points, points, atol=1e-13)
 
     def test_optical_roundtrip_with_rotation_and_translation(self):
@@ -92,6 +92,30 @@ class PhysicsTests(unittest.TestCase):
     def test_empty_cloud(self):
         r = correct_points(np.empty((0, 3)), range_model="direction_only")
         self.assertEqual(r.points.shape, (0, 3))
+
+    def test_direction_scale_does_not_change_ray(self):
+        directions = np.array([[.3, .2, 1.]])
+        reference = trace_rays(directions, (-.02, 0, .02445))
+        for scale in (1e-200, 1e200):
+            trace = trace_rays(directions*scale, (-.02, 0, .02445))
+            self.assertTrue(trace.valid.all())
+            np.testing.assert_allclose(trace.exit_direction, reference.exit_direction, atol=1e-14)
+
+    def test_near_surface_and_thin_wall(self):
+        dome = Dome(thickness_m=1e-10)
+        trace = trace_rays([[0, 0, 1]], (0, 0, dome.inner_radius_m-1e-12), dome)
+        self.assertTrue(trace.valid.all())
+        np.testing.assert_allclose(trace.inside_length_m, 1e-12, atol=1e-17, rtol=0)
+        np.testing.assert_allclose(trace.wall_length_m, 1e-10, atol=1e-17, rtol=0)
+
+    def test_numeric_strings_are_rejected(self):
+        for value in ("0.004", True, [0.004]):
+            with self.assertRaises(ValueError):
+                Dome(thickness_m=value)
+
+    def test_irrelevant_range_index_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "only used"):
+            correct_points([[0, 0, 5]], range_model="direction_only", range_reference_index=1)
 
 
 if __name__ == "__main__":

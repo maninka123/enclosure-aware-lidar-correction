@@ -1,7 +1,6 @@
 """Deterministic experiments; PNG/PDF figures and underlying CSV tables."""
 from dataclasses import replace
 from pathlib import Path
-import csv
 import json
 import platform
 import numpy as np
@@ -11,13 +10,7 @@ import matplotlib.pyplot as plt
 from .model import trace_rays, xz_directions, angle_between_deg
 from .correction import correct_points
 from .config import config_dict
-
-
-def write_table(path, names, rows):
-    with Path(path).open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.writer(stream)
-        writer.writerow(names)
-        writer.writerows(rows)
+from .cloud_io import write_table
 
 
 def save_figure(fig, folder, name):
@@ -40,12 +33,12 @@ def run_experiments(output, dome, origin, rotation):
     baseline = trace_rays(directions, origin, dome)
     if not baseline.valid.all():
         raise ValueError("Experiment requires all XZ rays in 50..130 degrees to exit the dome.")
-    signed = np.rad2deg(np.arctan2(baseline.exit_direction[:, 2], baseline.exit_direction[:, 0])) - angles
-    write_table(tables / "deflection.csv", ["input_deg", "signed_deflection_deg", "total_deflection_deg"],
+    signed = (np.rad2deg(np.arctan2(baseline.exit_direction[:, 2], baseline.exit_direction[:, 0])) - angles + 180) % 360 - 180
+    write_table(tables / "deflection.csv", ["input_deg", "signed_xz_projection_deflection_deg", "total_deflection_deg"],
                 zip(angles, signed, angle_between_deg(directions, baseline.exit_direction)))
     fig, ax = plt.subplots(figsize=(7, 4), layout="constrained")
     ax.plot(angles, signed)
-    ax.set(xlabel="Input angle from +X towards +Z (deg)", ylabel="Signed exit deflection (deg)",
+    ax.set(xlabel="Input angle from +X towards +Z (deg)", ylabel="Signed XZ projection deflection (deg)",
            title="Spherical dome: XZ angle sweep")
     save_figure(fig, figures, "01_deflection")
 
@@ -80,17 +73,17 @@ def sensitivity(tables, figures, angles, directions, baseline, dome, origin):
         ("Radius", "inner_radius_m", [-.002, -.001, .001, .002]),
         ("Wall index", "n_wall", [-.01, -.005, 0, .005, .01])]:
         for delta in deltas:
-            variants.append((group, f"{key} {delta:+g}", replace(dome, **{key: getattr(dome, key)+delta}), origin, directions))
+            variants.append((group, f"{key} {delta:+g}", {key: getattr(dome, key)+delta}, origin, directions))
     for group, deltas in [("Centre", [-.002, -.001, .001, .002]),
                           ("LiDAR position", [-.005, -.002, -.001, .001, .002, .005])]:
         for axis in range(3):
             for delta in deltas:
                 offset = np.eye(3)[axis]*delta
-                d = replace(dome, center_m=tuple(np.asarray(dome.center_m)+offset)) if group == "Centre" else dome
+                d = {"center_m": tuple(np.asarray(dome.center_m)+offset)} if group == "Centre" else {}
                 o = origin+offset if group == "LiDAR position" else origin
                 variants.append((group, f"{'xyz'[axis]} {delta*1000:+g} mm", d, o, directions))
     for delta in [-1, -.5, -.25, .25, .5, 1]:
-        variants.append(("Rotation in XZ", f"{delta:+g} deg", dome, origin, xz_directions(angles+delta)))
+        variants.append(("Rotation in XZ", f"{delta:+g} deg", {}, origin, xz_directions(angles+delta)))
     base_points = baseline.outer_hit + 5*baseline.exit_direction
     # Same approximate 1 m pair metric as the old script: 0.9..1.1 m, normalized to 1 m.
     ii, jj = np.triu_indices(len(angles), 1)
@@ -99,7 +92,12 @@ def sensitivity(tables, figures, angles, directions, baseline, dome, origin):
     ii, jj, distances = ii[select], jj[select], distances[select]
     detail, summaries = [], []
     for group, label, d, o, directions_variant in variants:
-        trace = trace_rays(directions_variant, o, d)
+        try:
+            trace = trace_rays(directions_variant, o, replace(dome, **d))
+        except ValueError as exc:
+            summaries.append([group, label, 0, None, None, None])
+            detail.extend((group, label, angle, None, None, f"invalid_geometry: {exc}") for angle in angles)
+            continue
         points = trace.outer_hit + 5*trace.exit_direction
         error = np.linalg.norm(points-base_points, axis=1)*1000
         angular = angle_between_deg(trace.exit_direction, baseline.exit_direction)
@@ -113,9 +111,12 @@ def sensitivity(tables, figures, angles, directions, baseline, dome, origin):
     write_table(tables / "sensitivity_detail.csv", ["group", "variation", "angle_deg", "angular_error_deg", "endpoint_error_5m_mm", "status"], detail)
     write_table(tables / "sensitivity_summary.csv", ["group", "variation", "valid_rays", "max_endpoint_error_5m_mm", "max_angular_error_deg", "max_normalized_1m_length_error_mm"], summaries)
     groups = list(dict.fromkeys(row[0] for row in summaries))
-    maxima = [max(row[3] for row in summaries if row[0] == group and row[3] is not None) for group in groups]
+    maxima = [max((row[3] for row in summaries if row[0] == group and row[3] is not None), default=np.nan) for group in groups]
     fig, ax = plt.subplots(figsize=(8, 4), layout="constrained")
     ax.barh(groups, maxima, color="#397fa3")
+    for i, maximum in enumerate(maxima):
+        if not np.isfinite(maximum):
+            ax.text(0, i, "No valid rays", va="center")
     ax.set(xlabel="Maximum endpoint displacement (mm)", title="Sensitivity at 5 m beyond the outer surface")
     save_figure(fig, figures, "03_sensitivity")
 

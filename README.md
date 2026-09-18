@@ -7,7 +7,7 @@ A standalone Python implementation of the two-interface spherical-dome method in
 
 This repository accompanies the enclosure-refraction topic in [Ranasinghe et al. (2026), *Correcting time offsets and enclosure-induced measurement distortions in LiDAR–camera systems*](https://doi.org/10.1016/j.measurement.2026.122285), published in **Measurement, Volume 285, Article 122285**.
 
-**Scope:** this implementation focuses on spherical-dome LiDAR refraction and adds a 3D correction API and synthetic experiments. It does not yet reproduce every numbered paper equation or figure, the paper's lookup-table correction workflow, temporal calibration, or camera intrinsic/extrinsic calibration. The default 4 mm simulation wall is distinct from the paper's 6 mm dome; configurations must be selected for the experiment. See [the codebase review](docs/codebase_review.md).
+**Scope:** 3D spherical-dome refraction correction and synthetic validation. See [implementation coverage](docs/codebase_review.md) for the relationship to the paper.
 
 ## Install and run
 
@@ -33,6 +33,8 @@ Each experiment writes:
 - `manifest.json`: configuration, software versions, assumptions, and error metrics.
 
 Output directories must be new, preventing accidental replacement of earlier runs. Use `configs/sensitivity.json` for the original sensitivity script's index of 1.570; `baseline.json` uses 1.52. Experiments use enclosure-frame rays, independent of the sensor rotation; synthetic clouds are exported in sensor coordinates.
+
+The baseline and sensitivity examples use a 4 mm wall. The historical point-cloud configuration uses 6 mm, matching the paper's stated wall thickness; its remaining parameters still require validation for your capture.
 
 ## Correct a point cloud
 
