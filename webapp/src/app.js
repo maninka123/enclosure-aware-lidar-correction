@@ -500,6 +500,7 @@ document
           ["beam-a", "designer-section"].includes(b.dataset.focus)
             ? $("plane-a").value
             : $("plane-b").value,
+          val("raylength") / 1000,
         )),
   );
 let expanded = null,

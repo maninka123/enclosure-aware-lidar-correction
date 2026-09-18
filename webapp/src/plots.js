@@ -285,7 +285,18 @@ const axes = (plane) =>
   plane === "XZ" ? [0, 2] : plane === "YZ" ? [1, 2] : [0, 1];
 export function beam2d(id, c, t, length, plane) {
   const [a, b] = axes(plane),
-    data = [];
+    data = [],
+    outer = (c.radius + c.thickness) * 1000,
+    inspectionPadding = 50,
+    inspectionHalfSpan = outer + inspectionPadding,
+    inspectionX = [
+      c.center[a] * 1000 - inspectionHalfSpan,
+      c.center[a] * 1000 + inspectionHalfSpan,
+    ],
+    inspectionY = [
+      c.center[b] * 1000 - inspectionHalfSpan,
+      c.center[b] * 1000 + inspectionHalfSpan,
+    ];
   for (const r of [c.radius, c.radius + c.thickness]) {
     const points = Array.from({ length: 241 }, (_, i) => {
       const theta =
@@ -318,11 +329,13 @@ export function beam2d(id, c, t, length, plane) {
   return plot(id, data, {
     xaxis: {
       title: { text: `${plane[0]} (mm)` },
+      range: inspectionX,
       gridcolor: "#e5ecef",
       zeroline: false,
     },
     yaxis: {
       title: { text: `${plane[1]} (mm)` },
+      range: inspectionY,
       scaleanchor: "x",
       scaleratio: 1,
       gridcolor: "#e5ecef",
@@ -565,14 +578,34 @@ export function objectMesh(obj) {
     hovertemplate: "Scene surface<extra></extra>",
   };
 }
-export function focusPlot(id, hit, c, t, plane) {
+export function focusPlot(id, hit, c, t, plane, length = 0.1) {
   const p = t[hit];
   if (hit !== "all" && !p) return;
   const width = Math.max(c.thickness * 1000 * 4, 0.1);
   const [a, b] = axes(plane);
+  const fullPathBounds = () => {
+    const outer = (c.radius + c.thickness) * 1000;
+    const xs = [c.center[a] * 1000 - outer, c.center[a] * 1000 + outer];
+    const ys = [c.center[b] * 1000 - outer, c.center[b] * 1000 + outer];
+    for (const segment of raySegments(c, t, length)) {
+      for (const point of segment.p) {
+        xs.push(point[a] * 1000);
+        ys.push(point[b] * 1000);
+      }
+    }
+    const padded = (values) => {
+      const low = Math.min(...values),
+        high = Math.max(...values),
+        padding = Math.max(10, (high - low) * 0.08);
+      return [low - padding, high + padding];
+    };
+    return { x: padded(xs), y: padded(ys) };
+  };
   const bounds =
     hit === "all"
-      ? null
+      ? id === "beam3d"
+        ? null
+        : fullPathBounds()
       : id === "beam3d"
         ? { center: p.map((v) => v * 1000), span: width * 2 }
         : {

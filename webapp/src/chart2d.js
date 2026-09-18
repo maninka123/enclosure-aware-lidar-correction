@@ -145,7 +145,7 @@ export class Chart2D {
       }
     }
     let xr = this.bounds?.x || layout.xaxis?.range || extent(xx),
-      yr = this.bounds?.y || extent(yy);
+      yr = this.bounds?.y || layout.yaxis?.range || extent(yy);
     if (
       !this.bounds &&
       (layout.yaxis?.rangemode === "tozero" ||
@@ -153,19 +153,15 @@ export class Chart2D {
         data[0]?.type === "histogram")
     )
       yr = [Math.min(0, ...yy.filter(finite)), yr[1]];
+    // Ray-path views use a square physical frame. Keeping the frame square,
+    // instead of widening the data range to fill the card, preserves a 1:1
+    // millimetre scale without inventing hundreds of millimetres of X/Y space.
     if (equal) {
-      const ratio =
-        Math.max(1, this.host.clientWidth - 88) /
-        Math.max(1, this.host.clientHeight - 86);
-      const w = xr[1] - xr[0],
-        h = yr[1] - yr[0];
-      if (w / h < ratio) {
-        const c = (xr[0] + xr[1]) / 2;
-        xr = [c - (h * ratio) / 2, c + (h * ratio) / 2];
-      } else {
-        const c = (yr[0] + yr[1]) / 2;
-        yr = [c - w / ratio / 2, c + w / ratio / 2];
-      }
+      const span = Math.max(xr[1] - xr[0], yr[1] - yr[0]);
+      const xc = (xr[0] + xr[1]) / 2,
+        yc = (yr[0] + yr[1]) / 2;
+      xr = [xc - span / 2, xc + span / 2];
+      yr = [yc - span / 2, yc + span / 2];
     }
     const axis = (name) => ({
       type: "value",
@@ -186,6 +182,15 @@ export class Chart2D {
       splitLine: { lineStyle: { color: "#eaf0f2", type: "dashed" } },
       splitNumber: 4,
     });
+    const equalFrameSize = equal
+      ? Math.max(
+          120,
+          Math.min(
+            Math.max(120, this.host.clientWidth - 96),
+            Math.max(120, this.host.clientHeight - 62),
+          ),
+        )
+      : null;
     const option = {
       animation: false,
       backgroundColor: "#fff",
@@ -193,12 +198,19 @@ export class Chart2D {
       textStyle: {
         fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
       },
-      grid: {
-        left: 64,
-        right: heat ? 64 : 24,
-        top: layout.showlegend ? 38 : 20,
-        bottom: 66,
-      },
+      grid: equal
+        ? {
+            width: equalFrameSize,
+            height: equalFrameSize,
+            left: Math.max(64, (this.host.clientWidth - equalFrameSize) / 2),
+            top: 10,
+          }
+        : {
+            left: 64,
+            right: heat ? 64 : 24,
+            top: layout.showlegend ? 38 : 20,
+            bottom: 66,
+          },
       tooltip: {
         trigger: equal || heat ? "item" : "axis",
         renderMode: "richText",

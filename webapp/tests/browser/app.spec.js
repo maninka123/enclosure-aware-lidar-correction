@@ -202,6 +202,26 @@ test("new renderers preserve view controls, picking, aspect and PNG export", asy
   const bounds = JSON.parse(
     await page.locator("#designer-section").getAttribute("data-bounds"),
   );
+  const geometryBox = await page.locator("#geometry").boundingBox();
+  const projectionBox = await page.locator("#designer-section").boundingBox();
+  expect(geometryBox.width).toBeGreaterThan(projectionBox.width * 1.45);
+  // The equal-scale ray frame follows the configured geometry and ray extent;
+  // card width must not inflate the horizontal axis into empty space.
+  expect(bounds.x[1] - bounds.x[0]).toBeCloseTo(bounds.y[1] - bounds.y[0], 5);
+  expect(Math.max(Math.abs(bounds.x[0]), Math.abs(bounds.x[1]))).toBeLessThan(
+    160,
+  );
+  expect(bounds.x[0]).toBeCloseTo(-128, 5);
+  expect(bounds.x[1]).toBeCloseTo(128, 5);
+  await page.locator('[data-focus="designer-section"][data-hit="all"]').click();
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(
+          await page.locator("#designer-section").getAttribute("data-bounds"),
+        ).y[1],
+    )
+    .toBeGreaterThan(bounds.y[1]);
   await page
     .locator('[data-focus="designer-section"][data-hit="outer"]')
     .click();
