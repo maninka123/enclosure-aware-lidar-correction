@@ -6,6 +6,25 @@ test("designer, materials, beam inspection and atlas", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#geometry canvas")).toBeVisible();
   await expect(page.locator("#error")).toBeHidden();
+  const designerOrder = await page.evaluate(() => ({
+    toolbar: document
+      .querySelector("#designer .toolbar")
+      .getBoundingClientRect().bottom,
+    controlsTop: document
+      .querySelector("#beam-controls")
+      .getBoundingClientRect().top,
+    controlsBottom: document
+      .querySelector("#beam-controls")
+      .getBoundingClientRect().bottom,
+    plots: document.querySelector(".designer-overview").getBoundingClientRect()
+      .top,
+  }));
+  expect(designerOrder.controlsTop).toBeGreaterThanOrEqual(
+    designerOrder.toolbar,
+  );
+  expect(designerOrder.plots).toBeGreaterThanOrEqual(
+    designerOrder.controlsBottom,
+  );
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/designer.png", fullPage: true });
   await page.locator("#material").selectOption("bk7");
@@ -17,6 +36,9 @@ test("designer, materials, beam inspection and atlas", async ({ page }) => {
   await page.locator("#plane-b").selectOption("XY");
   await expect(page.locator("#curve-b-title")).toContainText("XY");
   await page.getByRole("tab", { name: /Beam inspector/ }).click();
+  await expect(
+    page.locator("#inspector-beam-slot #beam-controls"),
+  ).toBeVisible();
   await expect(page.locator("#beam3d canvas")).toBeVisible();
   await page.locator('[data-focus="beam-a"][data-hit="inner"]').click();
   await page.locator('[data-expand="beam3d"]').click();

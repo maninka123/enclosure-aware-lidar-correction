@@ -262,54 +262,6 @@
       <main>
         <div id="error" class="error" role="alert" hidden></div>
         <div id="notice" class="notice" role="status" hidden></div>
-        <section
-          id="beam-controls"
-          class="beam-control-strip"
-          aria-label="Selected beam controls"
-        >
-          <div>
-            <span class="eyebrow">SELECTED BEAM</span>
-            <strong>Adjust while viewing</strong>
-          </div>
-          <label
-            >Polar tilt from sensor +Z
-            <small>in the plane selected by azimuth</small>
-            <output id="polar-out">25°</output
-            ><input
-              id="polar"
-              type="range"
-              min="0"
-              max="180"
-              value="25"
-              step=".5"
-          /></label>
-          <label
-            >Azimuth in sensor XY
-            <small>from +X toward +Y about +Z</small>
-            <output id="azimuth-out">0°</output
-            ><input
-              id="azimuth"
-              type="range"
-              min="0"
-              max="360"
-              value="0"
-              step="1"
-          /></label>
-          <div class="beam-plane-readout">
-            <span>XZ · atan2(X,Z) <b id="beam-xz">—</b></span>
-            <span>YZ · atan2(Y,Z) <b id="beam-yz">—</b></span>
-          </div>
-          <label class="beam-length"
-            >Ray after shell <em>mm</em
-            ><input
-              id="raylength"
-              type="number"
-              value="100"
-              min="1"
-              max="10000"
-              step="10"
-          /></label>
-        </section>
         <section id="designer" role="tabpanel" aria-labelledby="tab-designer">
           <div class="page-heading">
             <div>
@@ -346,6 +298,56 @@
                 <option value="sensor">Rotated sensor axes</option>
               </select></label
             ><button id="export-curves" class="secondary">↓ Curves CSV</button>
+          </div>
+          <div id="designer-beam-slot">
+            <section
+              id="beam-controls"
+              class="beam-control-strip"
+              aria-label="Selected beam controls"
+            >
+              <div>
+                <span class="eyebrow">SELECTED BEAM</span>
+                <strong>Adjust while viewing</strong>
+              </div>
+              <label
+                >Polar tilt from sensor +Z
+                <small>in the plane selected by azimuth</small>
+                <output id="polar-out">25°</output
+                ><input
+                  id="polar"
+                  type="range"
+                  min="0"
+                  max="180"
+                  value="25"
+                  step=".5"
+              /></label>
+              <label
+                >Azimuth in sensor XY
+                <small>from +X toward +Y about +Z</small>
+                <output id="azimuth-out">0°</output
+                ><input
+                  id="azimuth"
+                  type="range"
+                  min="0"
+                  max="360"
+                  value="0"
+                  step="1"
+              /></label>
+              <div class="beam-plane-readout">
+                <span>XZ · atan2(X,Z) <b id="beam-xz">—</b></span>
+                <span>YZ · atan2(Y,Z) <b id="beam-yz">—</b></span>
+              </div>
+              <label class="beam-length"
+                >Ray after shell <em>mm</em
+                ><input
+                  id="raylength"
+                  type="number"
+                  value="100"
+                  min="1"
+                  max="10000"
+                  step="10"
+              /></label>
+            </section>
           </div>
           <div class="grid two designer-overview">
             <article class="card">
@@ -441,6 +443,7 @@
             </div>
           </div>
           <div id="beam-stats" class="stats"></div>
+          <div id="inspector-beam-slot"></div>
           <article class="card">
             <div class="card-head">
               <h2>3D optical path</h2>

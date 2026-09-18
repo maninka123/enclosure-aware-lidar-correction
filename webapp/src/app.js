@@ -382,7 +382,10 @@ async function tab(name) {
   )
     name = "designer";
   active = name;
-  $("beam-controls").hidden = !["designer", "beam"].includes(name);
+  const beamControls = $("beam-controls");
+  if (name === "designer") $("designer-beam-slot").append(beamControls);
+  else if (name === "beam") $("inspector-beam-slot").append(beamControls);
+  beamControls.hidden = !["designer", "beam"].includes(name);
   document
     .querySelectorAll("[role=tabpanel]")
     .forEach((el) => (el.hidden = el.id !== name));
