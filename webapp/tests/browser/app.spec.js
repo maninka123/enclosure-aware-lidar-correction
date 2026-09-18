@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-test("designer, materials, beam inspection and atlas", async ({ page }) => {
+test("combined enclosure and beam designer, materials and atlas", async ({
+  page,
+}) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
@@ -35,18 +37,38 @@ test("designer, materials, beam inspection and atlas", async ({ page }) => {
   await page.waitForTimeout(500);
   await page.locator("#plane-b").selectOption("XY");
   await expect(page.locator("#curve-b-title")).toContainText("XY");
-  await page.getByRole("tab", { name: /Beam inspector/ }).click();
-  await expect(
-    page.locator("#inspector-beam-slot #beam-controls"),
-  ).toBeVisible();
-  await expect(page.locator("#beam3d canvas")).toBeVisible();
-  await page.locator('[data-focus="beam-a"][data-hit="inner"]').click();
-  await page.locator('[data-expand="beam3d"]').click();
+  await expect(page.locator("#designer-stats")).toContainText(
+    "Inner incidence",
+  );
+  await page
+    .locator('[data-focus="designer-section"][data-hit="outer"]')
+    .click();
+  await page.locator('[data-expand="geometry"]').click();
   await expect(page.locator("#plot-dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#plot-dialog")).toBeHidden();
   await page.getByRole("tab", { name: /Deflection atlas/ }).click();
   await expect(page.locator("#heatmap canvas").first()).toBeVisible();
+  const atlasColourPixels = await page
+    .locator("#heatmap canvas")
+    .evaluateAll((canvases) => {
+      return canvases.reduce((total, canvas) => {
+        const pixels = canvas
+          .getContext("2d")
+          .getImageData(0, 0, canvas.width, canvas.height).data;
+        let count = 0;
+        for (let i = 0; i < pixels.length; i += 4)
+          if (
+            pixels[i + 3] > 0 &&
+            Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) -
+              Math.min(pixels[i], pixels[i + 1], pixels[i + 2]) >
+              25
+          )
+            count++;
+        return total + count;
+      }, 0);
+    });
+  expect(atlasColourPixels).toBeGreaterThan(5000);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/atlas.png", fullPage: true });
   await page.locator("#open-model").click();

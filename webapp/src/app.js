@@ -293,6 +293,17 @@ async function render() {
           ray.valid ? "Net angular deviation" : ray.status.replaceAll("_", " "),
         ],
         ["Wall index", fmt(config.nWall, 6), "n"],
+        [
+          "Inner incidence",
+          ray.inner ? fmt(angle(ray.incident, ray.innerNormal), 3) : "—",
+          "deg",
+        ],
+        [
+          "Outer incidence",
+          ray.outer ? fmt(angle(ray.wall, ray.outerNormal), 3) : "—",
+          "deg",
+        ],
+        ["Wall travel", fmt(ray.lWall * 1000, 4), "mm"],
       ]);
       $("designer-section-title").textContent = `${a} ray path`;
       $("designer-section-b-title").textContent = `${b} ray path`;
@@ -323,33 +334,6 @@ async function render() {
           b,
         ),
       ]);
-    } else if (active === "beam") {
-      stats("beam-stats", [
-        [
-          "Inner incidence",
-          ray.inner ? fmt(angle(ray.incident, ray.innerNormal), 3) : "—",
-          "deg",
-        ],
-        [
-          "Outer incidence",
-          ray.outer ? fmt(angle(ray.wall, ray.outerNormal), 3) : "—",
-          "deg",
-        ],
-        ["Wall travel", fmt(ray.lWall * 1000, 4), "mm"],
-        [
-          "Total deflection",
-          ray.valid ? fmt(ray.deflection, 5) : "Blocked",
-          "deg",
-          ray.valid ? "Transmitted ray" : ray.status.replaceAll("_", " "),
-        ],
-      ]);
-      $("beam-a-title").textContent = `${a} projection`;
-      $("beam-b-title").textContent = `${b} projection`;
-      await Promise.all([
-        charts.geometry("beam3d", config, ray, length, false),
-        charts.beam2d("beam-a", config, ray, length, a),
-        charts.beam2d("beam-b", config, ray, length, b),
-      ]);
     } else if (active === "atlas") {
       atlasData = charts.atlas(config);
       const v = atlasData.values,
@@ -376,16 +360,9 @@ async function render() {
 $("open-model").onclick = () => $("model-dialog").showModal();
 $("close-model").onclick = () => $("model-dialog").close();
 async function tab(name) {
-  if (
-    !$(name) ||
-    !["designer", "beam", "atlas", "cloud", "scene"].includes(name)
-  )
+  if (!$(name) || !["designer", "atlas", "cloud", "scene"].includes(name))
     name = "designer";
   active = name;
-  const beamControls = $("beam-controls");
-  if (name === "designer") $("designer-beam-slot").append(beamControls);
-  else if (name === "beam") $("inspector-beam-slot").append(beamControls);
-  beamControls.hidden = !["designer", "beam"].includes(name);
   document
     .querySelectorAll("[role=tabpanel]")
     .forEach((el) => (el.hidden = el.id !== name));
@@ -530,7 +507,7 @@ document
           b.dataset.hit,
           config,
           ray,
-          ["beam-a", "designer-section"].includes(b.dataset.focus)
+          b.dataset.focus === "designer-section"
             ? $("plane-a").value
             : $("plane-b").value,
           val("raylength") / 1000,

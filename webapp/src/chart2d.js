@@ -293,6 +293,7 @@ export class Chart2D {
         splitLine: { show: false },
       };
       option.visualMap = {
+        dimension: 2,
         min: 0,
         max: Math.max(0.001, ...vals),
         calculable: false,

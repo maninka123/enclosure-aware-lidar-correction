@@ -741,14 +741,10 @@ export function focusPlot(id, hit, c, t, plane, length = 0.1) {
   };
   const bounds =
     hit === "all"
-      ? id === "beam3d"
-        ? null
-        : fullPathBounds()
-      : id === "beam3d"
-        ? { center: p.map((v) => v * 1000), span: width * 2 }
-        : {
-            x: [p[a] * 1000 - width, p[a] * 1000 + width],
-            y: [p[b] * 1000 - width, p[b] * 1000 + width],
-          };
+      ? fullPathBounds()
+      : {
+          x: [p[a] * 1000 - width, p[a] * 1000 + width],
+          y: [p[b] * 1000 - width, p[b] * 1000 + width],
+        };
   return import("./rendering.js").then((r) => r.focus(id, bounds));
 }

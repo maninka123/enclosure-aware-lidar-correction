@@ -76,16 +76,7 @@
         data-tab="designer"
         aria-selected="true"
       >
-        01 <span>Enclosure designer</span>
-      </button>
-      <button
-        role="tab"
-        id="tab-beam"
-        aria-controls="beam"
-        data-tab="beam"
-        aria-selected="false"
-      >
-        02 <span>Beam inspector</span>
+        01 <span>Enclosure &amp; beam</span>
       </button>
       <button
         role="tab"
@@ -94,7 +85,7 @@
         data-tab="atlas"
         aria-selected="false"
       >
-        03 <span>Deflection atlas</span>
+        02 <span>Deflection atlas</span>
       </button>
       <button
         role="tab"
@@ -103,7 +94,7 @@
         data-tab="cloud"
         aria-selected="false"
       >
-        04 <span>Point clouds</span>
+        03 <span>Point clouds</span>
       </button>
       <button
         role="tab"
@@ -112,7 +103,7 @@
         data-tab="scene"
         aria-selected="false"
       >
-        05 <span>Scene lab</span>
+        04 <span>Scene lab</span>
       </button>
     </nav>
     <button id="toggle-controls" class="mobile-controls">
@@ -266,7 +257,7 @@
           <div class="page-heading">
             <div>
               <p class="eyebrow">ENCLOSURE DESIGNER</p>
-              <h1>Design your optical system.</h1>
+              <h1>Design and inspect your optical system.</h1>
               <p>
                 Move the LiDAR, shape the dome, and watch refraction respond.
               </p>
@@ -430,64 +421,6 @@
             for a planar input sweep. Gaps indicate blocked or internally
             reflected rays. The shaded 50–130° sector matches the earlier
             experiments; it is not an aperture constraint.
-          </p>
-        </section>
-        <section id="beam" role="tabpanel" aria-labelledby="tab-beam" hidden>
-          <div class="page-heading">
-            <div>
-              <p class="eyebrow">FOLLOW A SINGLE RAY</p>
-              <h1>Two surfaces. Two refractions.</h1>
-              <p>
-                Inspect the selected beam and surface normals at each boundary.
-              </p>
-            </div>
-          </div>
-          <div id="beam-stats" class="stats"></div>
-          <div id="inspector-beam-slot"></div>
-          <article class="card">
-            <div class="card-head">
-              <h2>3D optical path</h2>
-              <div class="actions">
-                <button data-focus="beam3d" data-hit="inner">
-                  Inner interface</button
-                ><button data-focus="beam3d" data-hit="outer">
-                  Outer interface</button
-                ><button data-focus="beam3d" data-hit="all">Full path</button
-                ><button data-expand="beam3d">⛶ Expand</button>
-              </div>
-            </div>
-            <div id="beam3d" class="plot large"></div>
-          </article>
-          <div class="grid two">
-            <article class="card">
-              <div class="card-head">
-                <h2 id="beam-a-title">XZ projection</h2>
-                <div class="actions">
-                  <button data-focus="beam-a" data-hit="inner">Inner</button
-                  ><button data-focus="beam-a" data-hit="outer">Outer</button
-                  ><button data-focus="beam-a" data-hit="all">Reset</button
-                  ><button data-expand="beam-a">⛶</button>
-                </div>
-              </div>
-              <div id="beam-a" class="plot"></div>
-            </article>
-            <article class="card">
-              <div class="card-head">
-                <h2 id="beam-b-title">YZ projection</h2>
-                <div class="actions">
-                  <button data-focus="beam-b" data-hit="inner">Inner</button
-                  ><button data-focus="beam-b" data-hit="outer">Outer</button
-                  ><button data-focus="beam-b" data-hit="all">Reset</button
-                  ><button data-expand="beam-b">⛶</button>
-                </div>
-              </div>
-              <div id="beam-b" class="plot"></div>
-            </article>
-          </div>
-          <p class="footnote">
-            2D panels are projections of the actual 3D ray, with projected shell
-            outlines. A projected hit need not lie on the outline when the ray
-            is outside that plane. Surface angles above are measured in 3D.
           </p>
         </section>
         <section id="atlas" role="tabpanel" aria-labelledby="tab-atlas" hidden>

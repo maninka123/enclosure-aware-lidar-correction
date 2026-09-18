@@ -8,8 +8,7 @@ A static browser application for the same concentric spherical-shell model as th
 
 | Workspace | Features |
 |---|---|
-| Enclosure designer | Inner radius, thickness, centre/source XYZ, roll/pitch/yaw, indices, hemisphere/full sphere, source axes and forward direction, pinned comparison curves |
-| Beam inspector | Selected beam, true 3D surface angles, projected paths, normals, inner/outer interface zoom and expanded plots |
+| Enclosure & beam | Geometry and materials, selected-beam controls, true 3D surface angles, projected paths, interface zoom, source axes, forward direction and comparison curves |
 | Deflection atlas | Selectable XY/XZ/YZ sweeps in the designer, 0–180° or 0–360° ranges, full-sphere direction colours and azimuth/polar heatmap |
 | Point clouds | Analytical/LUT/both correction, dynamic LUT validation and import/export, selectable overlays and difference maps, measured performance, attribute-preserving CSV/PCD output |
 | Scene lab | Raw, analytical and LUT reconstruction against synthetic truth; editable targets; up to eight sensor stations; error/range/angle plots and JSON scene import/export |
