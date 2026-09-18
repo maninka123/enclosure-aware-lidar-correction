@@ -28,7 +28,12 @@ const colorscale = [
 const common = {
   paper_bgcolor: "#fff",
   plot_bgcolor: "#fff",
-  font: { family: "Segoe UI, Arial, sans-serif", size: 11, color: "#405b67" },
+  font: {
+    family:
+      "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif",
+    size: 11,
+    color: "#405b67",
+  },
   margin: { l: 64, r: 26, t: 20, b: 55 },
   hoverlabel: { bgcolor: "#102d39", font: { color: "#fff" } },
   uirevision: "keep-view",

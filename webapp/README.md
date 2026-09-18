@@ -78,3 +78,7 @@ or use **Add material** to save a name, phase index and optional measurement not
 The shared library is stored locally in this browser (up to 100 entries). Scene JSON
 includes the library and selections for use on another computer; Python configuration
 JSON retains the numerical indices. Browser storage failures are reported before saving.
+
+### Interface design
+
+UI changes follow [Emil Kowalski's Apple Design skill](https://github.com/emilkowalski/skills/tree/main/skills/apple-design): system typography, clear hierarchy, immediate press feedback, restrained translucent navigation, accessible focus states and reduced-motion/transparency preferences. Keep the desktop designer split equally between the 3D enclosure and the two ray projections. Scientific plot colours distinguish beam segments independently of interface styling.

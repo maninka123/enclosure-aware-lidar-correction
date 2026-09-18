@@ -1,21 +1,19 @@
 :root {
-  --ink: #182e39;
-  --muted: #617781;
+  --ink: #1d252d;
+  --muted: #596873;
   --teal: #087f83;
   --light: #e6f3f1;
-  --paper: #f3f6f6;
-  --line: #dce5e8;
+  --paper: #f5f5f7;
+  --line: #dce0e5;
   --nav: #102d39;
   --coral: #de7358;
   --amber: #d89c27;
   font-family:
-    Inter,
-    Segoe UI,
-    Arial,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-optical-sizing: auto;
   color: var(--ink);
   background: var(--paper);
-  font-size: 14px;
+  font-size: 87.5%;
 }
 * {
   box-sizing: border-box;
@@ -832,4 +830,155 @@ dialog::backdrop {
 .controls button[data-add-material] {
   margin: 4px 0 12px;
   font-size: 11px;
+}
+
+/* Apple Design: restrained hierarchy, immediate feedback and accessible surfaces. */
+.topbar {
+  background: #fbfbfd;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.brand b,
+.brand-icon {
+  color: var(--teal);
+}
+.brand small {
+  color: var(--muted);
+  letter-spacing: 0.025em;
+  font-weight: 400;
+}
+.toplinks a {
+  color: var(--ink);
+}
+.privacy {
+  color: var(--muted);
+}
+.tabs {
+  background: rgba(250, 250, 252, 0.94);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  box-shadow: 0 5px 18px rgba(20, 30, 40, 0.035);
+}
+.tabs button {
+  padding: 0.8rem 0.65rem;
+  border-radius: 0.65rem;
+  border-bottom: 0;
+  color: #596873;
+}
+.tabs button[aria-selected="true"] {
+  background: white;
+  box-shadow: 0 1px 5px rgba(20, 30, 40, 0.12);
+}
+h1 {
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  font-weight: 650;
+}
+h2 {
+  letter-spacing: -0.012em;
+}
+.page-heading p {
+  line-height: 1.5;
+}
+.card,
+.stat {
+  border-radius: 1rem;
+  box-shadow: 0 2px 6px rgba(20, 30, 40, 0.025);
+}
+.stat strong,
+input,
+output {
+  font-variant-numeric: tabular-nums;
+}
+button,
+.file-button,
+input,
+select {
+  border-radius: 0.6rem;
+}
+button,
+.file-button {
+  touch-action: manipulation;
+}
+button:not(:disabled):active,
+.file-button:active {
+  transform: scale(0.98);
+  filter: brightness(0.94);
+  transition: none;
+}
+input[readonly] {
+  background: #f5f6f8;
+  color: #4d5964;
+}
+.micro,
+.footnote {
+  line-height: 1.6;
+}
+summary:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
+  border-radius: 0.3rem;
+}
+dialog {
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 90px rgba(20, 30, 40, 0.24);
+}
+dialog::backdrop {
+  background: rgba(20, 30, 40, 0.38);
+  backdrop-filter: blur(4px);
+}
+@media (pointer: coarse) {
+  button,
+  .file-button,
+  select,
+  input:not([type="checkbox"]):not([type="range"]) {
+    min-height: 44px;
+  }
+  input[type="range"] {
+    min-height: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .file-button {
+    transition: none;
+  }
+  button:not(:disabled):active,
+  .file-button:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .tabs {
+    background: #fafafc;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  dialog::backdrop {
+    backdrop-filter: none;
+    background: rgba(20, 30, 40, 0.55);
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #35434f;
+    --line: #687580;
+  }
+  .tabs {
+    background: white;
+    backdrop-filter: none;
+  }
+  button,
+  input,
+  select,
+  .card {
+    border-color: #687580;
+  }
 }
