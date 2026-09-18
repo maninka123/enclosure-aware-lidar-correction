@@ -1,0 +1,5 @@
+{
+  "dome": {"inner_radius_m": 0.074, "thickness_m": 0.004, "center_m": [0, 0, 0], "n_inside": 1.000293, "n_wall": 1.570, "n_outside": 1.000293, "upper_only": true},
+  "origin_m": [-0.02, 0, 0.02445],
+  "sensor_to_dome_rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+}

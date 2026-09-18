@@ -1,0 +1,11 @@
+# Applying the model to real captures
+
+1. Obtain an original, uncorrected single-sensor cloud. The existing `Corrected/AdjustedPointCloud_Method*.pcd` files have already been corrected and must not be treated as raw validation inputs. For motion-compensated or globally registered clouds, retain the sensor pose and beam source for every acquisition; transform back to the acquisition frame before correction.
+2. Measure inner radius, wall thickness, dome center relative to the beam source, and the sensor-to-enclosure rotation. Record material, wavelength, surrounding medium, and acquisition conditions. Save one config with each capture. The source is the optical beam origin, not necessarily the housing's mechanical reference.
+3. Establish what the sensor's XYZ radius represents. Start with direction-only mode to compare the angular effect, but do not assume optical-path compensation without knowing the manufacturer's range conversion and existing firmware corrections. Separate phase/group indices or an empirical range offset may be necessary.
+4. Capture stationary planar boards and known distances at several ranges and scan angles, ideally with paired enclosure/no-enclosure data and an independent reference. Include near and far targets because exit-point displacement matters most nearby.
+5. Run raw, direction-only and justified full-range corrections. Inspect rejection counts and point displacements. Preserve intensity/timestamps and never re-correct an already corrected cloud.
+6. Evaluate signed residuals to independently surveyed planes, plane RMS and 95th-percentile residual, normal error, known length error, and repeatability. If using fitted planes without survey truth, report planarity only; a fitted plane can hide rigid offsets and tilt. Use held-out captures for evaluation and separate data for fitting geometry.
+7. Plot residual versus azimuth/elevation and distance. Check for coordinate errors, systematic range bias, seam/aperture problems and multipath before attributing improvements to the model.
+
+The supplied synthetic example validates the forward/inverse implementation under identical assumptions. Its near-zero corrected error is expected and does not predict real sensor accuracy. No real capture has been declared corrected or validated here because the raw capture's geometry and range semantics are not established.

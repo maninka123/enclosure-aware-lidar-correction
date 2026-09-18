@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+outputs/*
+!outputs/README.md
+data/raw/*
+!data/raw/README.md
