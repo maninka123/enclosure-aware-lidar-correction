@@ -188,9 +188,33 @@ export function geometry(id, c, t, length, withFan = true) {
   data.push({
     ...points3([origin], "LiDAR source", "#123d50", 7),
     mode: "markers+text",
-    text: ["LiDAR"],
+    text: ["LiDAR source"],
+    hovertemplate:
+      "LiDAR source<br>X %{x:.3f}, Y %{y:.3f}, Z %{z:.3f} mm<extra></extra>",
     textposition: "top center",
   });
+  const center = mul(c.center, 1000);
+  const atZero = norm(center) < 1e-9;
+  data.push({
+    ...points3([center], "Dome centre", "#8656a3", 6),
+    mode: "markers+text",
+    marker: { size: 6, color: "#8656a3", symbol: "diamond" },
+    text: [atZero ? "Dome centre / (0, 0, 0)" : "Dome centre"],
+    textposition: "bottom center",
+    hovertemplate:
+      "Dome centre<br>X %{x:.3f}, Y %{y:.3f}, Z %{z:.3f} mm<extra></extra>",
+  });
+  if (!atZero)
+    data.push({
+      ...points3([[0, 0, 0]], "Coordinate origin", "#66717d", 5),
+      mode: "markers+text",
+      text: ["Origin (0, 0, 0)"],
+      textposition: "bottom center",
+      hovertemplate: "Enclosure coordinate origin (0, 0, 0) mm<extra></extra>",
+    });
+  data.push(
+    line3([center, origin], "Centre to source offset", "#8656a3", 2, "dot"),
+  );
   const axisColors = ["#d66b60", "#62a782", "#4c83b3"];
   for (let i = 0; i < 3; i++) {
     const d = [0, 0, 0];
@@ -204,7 +228,7 @@ export function geometry(id, c, t, length, withFan = true) {
         5,
       ),
       mode: "lines+text",
-      text: ["", i === 2 ? "+Z / forward" : `+${"XY"[i]}`],
+      text: ["", i === 2 ? "Sensor +Z / forward" : `Sensor +${"XY"[i]}`],
       textposition: "top center",
     });
     data.push({

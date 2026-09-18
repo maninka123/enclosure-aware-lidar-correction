@@ -260,6 +260,9 @@ async function render() {
     const a = $("plane-a").value,
       b = $("plane-b").value;
     if (active === "designer") {
+      const coordinates = (p) => p.map((v) => fmt(v * 1000, 2)).join(", ");
+      $("coordinate-summary").textContent =
+        `Dome centre: (${coordinates(config.center)}) mm. LiDAR source: (${coordinates(config.origin)}) mm. Arrows show the rotated sensor axes; the grid uses enclosure coordinates.`;
       stats("designer-stats", [
         [
           "Inner / outer radius",
