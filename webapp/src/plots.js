@@ -293,10 +293,16 @@ export function beam2d(id, c, t, length, plane) {
       c.center[a] * 1000 - inspectionHalfSpan,
       c.center[a] * 1000 + inspectionHalfSpan,
     ],
-    inspectionY = [
-      c.center[b] * 1000 - inspectionHalfSpan,
-      c.center[b] * 1000 + inspectionHalfSpan,
-    ];
+    inspectionY =
+      c.upperOnly && plane !== "XY"
+        ? [
+            c.center[b] * 1000 - inspectionPadding,
+            c.center[b] * 1000 + inspectionHalfSpan,
+          ]
+        : [
+            c.center[b] * 1000 - inspectionHalfSpan,
+            c.center[b] * 1000 + inspectionHalfSpan,
+          ];
   for (const r of [c.radius, c.radius + c.thickness]) {
     const points = Array.from({ length: 241 }, (_, i) => {
       const theta =

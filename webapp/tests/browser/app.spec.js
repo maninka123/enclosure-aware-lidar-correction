@@ -68,6 +68,10 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/#scene");
+  await expect(page.locator("#scene-layer")).toHaveValue("comparison");
+  await expect(page.locator(".scene-method-note")).toContainText(
+    "ground truth is not supplied",
+  );
   await expect(page.locator("#scene-status")).toContainText("returns", {
     timeout: 30000,
   });
@@ -207,12 +211,20 @@ test("new renderers preserve view controls, picking, aspect and PNG export", asy
   expect(geometryBox.width).toBeGreaterThan(projectionBox.width * 1.45);
   // The equal-scale ray frame follows the configured geometry and ray extent;
   // card width must not inflate the horizontal axis into empty space.
-  expect(bounds.x[1] - bounds.x[0]).toBeCloseTo(bounds.y[1] - bounds.y[0], 5);
   expect(Math.max(Math.abs(bounds.x[0]), Math.abs(bounds.x[1]))).toBeLessThan(
     160,
   );
   expect(bounds.x[0]).toBeCloseTo(-128, 5);
   expect(bounds.x[1]).toBeCloseTo(128, 5);
+  expect(bounds.y[0]).toBeCloseTo(-50, 5);
+  expect(bounds.y[1]).toBeCloseTo(128, 5);
+  const frame = JSON.parse(
+    await page.locator("#designer-section").getAttribute("data-frame"),
+  );
+  expect(frame.width / frame.height).toBeCloseTo(
+    (bounds.x[1] - bounds.x[0]) / (bounds.y[1] - bounds.y[0]),
+    5,
+  );
   await page.locator('[data-focus="designer-section"][data-hit="all"]').click();
   await expect
     .poll(

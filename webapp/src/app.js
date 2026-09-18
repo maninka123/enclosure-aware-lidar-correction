@@ -1006,22 +1006,29 @@ function drawScene() {
   if (sceneResult) {
     const r = sceneResult,
       layer = $("scene-layer").value;
-    for (const [key, name, color] of [
-      ["bare", "No enclosure", "#6284b4"],
-      ["raw", "Enclosure raw", "#dd8c64"],
-      ["truth", "Refracted-hit truth", "#98a9ad"],
-      ["corrected", "Corrected", r.error],
+    for (const [key, name, color, size, opacity] of [
+      ["bare", "No enclosure reference", "#4d73bd", 3.5, 0.75],
+      ["truth", "Synthetic truth (evaluation)", "#87969b", 3.5, 0.65],
+      ["raw", "Collected with enclosure", "#d8523c", 4.5, 0.82],
+      ["corrected", "Corrected from collected cloud", r.error, 5.5, 1],
     ])
-      if (layer === "all" || layer === key)
-        data.push(
-          charts.points3(
-            r[key],
-            name,
-            color,
-            2,
-            key === "corrected" ? "Error (mm)" : undefined,
-          ),
+      if (
+        layer === "all" ||
+        layer === key ||
+        (layer === "comparison" && ["raw", "corrected"].includes(key))
+      ) {
+        const cloud = charts.points3(
+          r[key],
+          name,
+          color,
+          size,
+          key === "corrected" ? "Evaluation error (mm)" : undefined,
         );
+        cloud.marker.opacity = opacity;
+        if (key === "raw") cloud.marker.style = "ring";
+        if (["raw", "corrected"].includes(key)) cloud.marker.overlay = true;
+        data.push(cloud);
+      }
     stats("scene-stats", [
       ["No-enclosure returns", r.bare.length.toLocaleString(), ""],
       ["Enclosure returns", r.truth.length.toLocaleString(), ""],
@@ -1040,7 +1047,9 @@ function drawScene() {
       ],
       {
         yaxis: { title: { text: "3D point RMSE (mm)" }, rangemode: "tozero" },
-        xaxis: { title: { text: "Against corresponding refracted-hit truth" } },
+        xaxis: {
+          title: { text: "Evaluation only · corresponding synthetic hit" },
+        },
       },
     );
   }
@@ -1196,6 +1205,8 @@ $("scene-report").onclick = () =>
       returns: sceneResult.truth.length,
       rejected: sceneResult.rejected,
       missed: sceneResult.missed,
+      correction_input: "raw_sensor_frame_cloud",
+      ground_truth_role: "synthetic_evaluation_only",
       interpretation:
         "Synthetic exact-model consistency; no real-world accuracy claim.",
     },

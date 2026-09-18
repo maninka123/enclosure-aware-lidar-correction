@@ -16,7 +16,12 @@ import {
 } from "../src/physics.js";
 import { indexFor } from "../src/materials.js";
 import { parseCloud, exportCloud, xyzPCD, csvText } from "../src/cloud.js";
-import { simulate, defaultObjects, intersect } from "../src/scene.js";
+import {
+  simulate,
+  defaultObjects,
+  intersect,
+  correctCollectedCloud,
+} from "../src/scene.js";
 test("matches original Python 2D trace", () => {
   const c = baseline(),
     r = trace(planeDirection(90, "XZ"), c);
@@ -116,6 +121,12 @@ test("scene closest intersections and reconstruction", () => {
   assert.ok(r.truth.length > 100);
   assert.ok(Math.max(...r.error) < 1e-8);
   assert.ok(Math.max(...r.rawError) > 1);
+  const independent = correctCollectedCloud(r.rawLocal, c, "optical_path");
+  assert.deepEqual(
+    independent.map((row) => row.point),
+    r.correctedLocal,
+    "scene reconstruction must be reproducible from the collected cloud alone",
+  );
   assert.ok(
     intersect([0, 0, 0], [0, 0, 1], {
       type: "box",

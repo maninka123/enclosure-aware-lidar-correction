@@ -39,6 +39,15 @@ export class Viewer3D {
     dc.arc(16, 16, 15, 0, Math.PI * 2);
     dc.fill();
     this.dotTexture = new THREE.CanvasTexture(dotCanvas);
+    const ringCanvas = document.createElement("canvas");
+    ringCanvas.width = ringCanvas.height = 32;
+    const rc = ringCanvas.getContext("2d");
+    rc.strokeStyle = "white";
+    rc.lineWidth = 6;
+    rc.beginPath();
+    rc.arc(16, 16, 12, 0, Math.PI * 2);
+    rc.stroke();
+    this.ringTexture = new THREE.CanvasTexture(ringCanvas);
     this.camera = new THREE.PerspectiveCamera(38, 1, 0.001, 10000);
     this.camera.up.set(0, 0, 1);
     this.renderer = new THREE.WebGLRenderer({
@@ -359,13 +368,14 @@ export class Viewer3D {
         new THREE.PointsMaterial({
           color: vertexColors ? "white" : marker.color || "#087f83",
           vertexColors,
-          map: this.dotTexture,
+          map: marker.style === "ring" ? this.ringTexture : this.dotTexture,
           alphaTest: 0.2,
           size: Math.max(3, (marker.size || 3) * 1.5),
           sizeAttenuation: false,
           transparent: true,
           opacity: marker.opacity || 1,
           depthWrite: false,
+          depthTest: marker.overlay !== true,
         }),
       );
       cloud.userData = { name: d.name, trace: d };
@@ -374,6 +384,7 @@ export class Viewer3D {
       if (layoutLegend(d) && this.host.id === "scene3d") {
         const item = document.createElement("span");
         item.textContent = d.name;
+        item.dataset.marker = marker.style || "dot";
         item.style.setProperty(
           "--layer-color",
           vertexColors ? "#087f83" : marker.color,
@@ -592,6 +603,7 @@ export class Viewer3D {
     disposeGroup(this.content);
     disposeGroup(this.grid);
     this.dotTexture.dispose();
+    this.ringTexture.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.host.replaceChildren();

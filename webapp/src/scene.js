@@ -103,6 +103,9 @@ export function nearest(o, d, objects) {
   });
   return hit;
 }
+export function correctCollectedCloud(points, c, mode = "optical_path") {
+  return points.map((point) => correct(point, c, mode, c.nInside));
+}
 export function simulate(
   c,
   objects,
@@ -145,6 +148,7 @@ export function simulate(
     rejected: 0,
     missed: 0,
   };
+  const measurements = [];
   const half = Math.tan((fov * Math.PI) / 360);
   for (let i = 0; i < resolution; i++)
     for (let j = 0; j < resolution; j++) {
@@ -173,26 +177,45 @@ export function simulate(
       const range =
         (c.nInside * t.lInside + c.nWall * t.lWall + c.nOutside * h.t) /
         c.nInside;
-      const raw = mul(sensor, range),
-        corrected = correct(raw, c, mode, c.nInside);
-      if (!corrected.valid) {
-        result.rejected++;
-        continue;
-      }
-      const rawWorld = add(origin, mv(world, mv(c.rotation, raw))),
-        correctedWorld = add(
-          origin,
-          mv(world, mv(c.rotation, corrected.point)),
-        );
-      result.truth.push(h.point);
-      result.raw.push(rawWorld);
-      result.corrected.push(correctedWorld);
-      result.rawLocal.push(raw);
-      result.correctedLocal.push(corrected.point);
-      result.error.push(norm(sub(correctedWorld, h.point)) * 1000);
-      result.rawError.push(norm(sub(rawWorld, h.point)) * 1000);
-      result.displacement.push(norm(sub(correctedWorld, rawWorld)) * 1000);
-      result.object.push(h.index);
+      const raw = mul(sensor, range);
+      measurements.push({
+        raw,
+        rawWorld: add(origin, mv(world, mv(c.rotation, raw))),
+        truth: h.point,
+        object: h.index,
+      });
     }
+  // Correct the collected enclosure-affected sensor cloud as a separate step.
+  // Synthetic scene hits are absent from this input and are used only below to
+  // evaluate the reconstructed cloud.
+  const corrections = correctCollectedCloud(
+    measurements.map((measurement) => measurement.raw),
+    c,
+    mode,
+  );
+  measurements.forEach((measurement, index) => {
+    const corrected = corrections[index];
+    if (!corrected.valid) {
+      result.rejected++;
+      return;
+    }
+    const correctedWorld = add(
+      origin,
+      mv(world, mv(c.rotation, corrected.point)),
+    );
+    result.truth.push(measurement.truth);
+    result.raw.push(measurement.rawWorld);
+    result.corrected.push(correctedWorld);
+    result.rawLocal.push(measurement.raw);
+    result.correctedLocal.push(corrected.point);
+    result.error.push(norm(sub(correctedWorld, measurement.truth)) * 1000);
+    result.rawError.push(
+      norm(sub(measurement.rawWorld, measurement.truth)) * 1000,
+    );
+    result.displacement.push(
+      norm(sub(correctedWorld, measurement.rawWorld)) * 1000,
+    );
+    result.object.push(measurement.object);
+  });
   return result;
 }

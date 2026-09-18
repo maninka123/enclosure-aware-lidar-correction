@@ -153,16 +153,9 @@ export class Chart2D {
         data[0]?.type === "histogram")
     )
       yr = [Math.min(0, ...yy.filter(finite)), yr[1]];
-    // Ray-path views use a square physical frame. Keeping the frame square,
-    // instead of widening the data range to fill the card, preserves a 1:1
-    // millimetre scale without inventing hundreds of millimetres of X/Y space.
-    if (equal) {
-      const span = Math.max(xr[1] - xr[0], yr[1] - yr[0]);
-      const xc = (xr[0] + xr[1]) / 2,
-        yc = (yr[0] + yr[1]) / 2;
-      xr = [xc - span / 2, xc + span / 2];
-      yr = [yc - span / 2, yc + span / 2];
-    }
+    // Equal-scale ray views size the frame from the requested data spans. This
+    // preserves one millimetre per visual unit without widening an axis merely
+    // because its surrounding card is wide.
     const axis = (name) => ({
       type: "value",
       name,
@@ -182,15 +175,19 @@ export class Chart2D {
       splitLine: { lineStyle: { color: "#eaf0f2", type: "dashed" } },
       splitNumber: 4,
     });
-    const equalFrameSize = equal
-      ? Math.max(
-          120,
-          Math.min(
-            Math.max(120, this.host.clientWidth - 96),
-            Math.max(120, this.host.clientHeight - 62),
-          ),
-        )
-      : null;
+    const equalFrame = (() => {
+      if (!equal) return null;
+      const availableWidth = Math.max(120, this.host.clientWidth - 96),
+        availableHeight = Math.max(120, this.host.clientHeight - 62),
+        aspect = Math.max(0.1, (xr[1] - xr[0]) / (yr[1] - yr[0]));
+      let width = availableWidth,
+        height = width / aspect;
+      if (height > availableHeight) {
+        height = availableHeight;
+        width = height * aspect;
+      }
+      return { width, height };
+    })();
     const option = {
       animation: false,
       backgroundColor: "#fff",
@@ -200,9 +197,9 @@ export class Chart2D {
       },
       grid: equal
         ? {
-            width: equalFrameSize,
-            height: equalFrameSize,
-            left: Math.max(64, (this.host.clientWidth - equalFrameSize) / 2),
+            width: equalFrame.width,
+            height: equalFrame.height,
+            left: Math.max(64, (this.host.clientWidth - equalFrame.width) / 2),
             top: 10,
           }
         : {
@@ -306,6 +303,7 @@ export class Chart2D {
       option.dataZoom.forEach((z, i) => Object.assign(z, this.zoom[i]));
     this.chart.setOption(option, { notMerge: true });
     this.host.dataset.bounds = JSON.stringify({ x: xr, y: yr });
+    if (equal) this.host.dataset.frame = JSON.stringify(equalFrame);
     this.host.dataset.points = String(
       series.reduce((n, s) => n + s.data.length, 0),
     );

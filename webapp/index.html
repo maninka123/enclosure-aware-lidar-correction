@@ -783,17 +783,24 @@
             intersection is returned.
           </p>
           <div id="scene-stats" class="stats"></div>
+          <p class="notice scene-method-note">
+            <strong>Correction input:</strong> the collected, enclosure-affected
+            sensor-frame point cloud. Synthetic ground truth is not supplied to
+            the correction; it is retained only to evaluate reconstruction
+            error.
+          </p>
           <article class="card">
             <div class="card-head">
               <h2>Scene & reconstructed returns</h2>
               <div class="actions">
                 <select id="scene-layer" aria-label="Scene layer">
-                  <option value="all">Compare all layers</option>
+                  <option value="comparison">Raw + corrected</option>
+                  <option value="all">All layers</option>
                   <option value="bare">No enclosure</option>
-                  <option value="raw">With enclosure · raw</option>
-                  <option value="truth">Refracted-hit truth</option>
+                  <option value="raw">Collected with enclosure</option>
+                  <option value="truth">Synthetic truth · evaluation</option>
                   <option value="corrected">
-                    Corrected · error colour
+                    Corrected from collected cloud
                   </option></select
                 ><button data-expand="scene3d">⛶ Expand</button>
               </div>
@@ -802,7 +809,7 @@
           </article>
           <div class="grid two">
             <article class="card">
-              <div class="card-head"><h2>3D reconstruction error</h2></div>
+              <div class="card-head"><h2>Synthetic evaluation error</h2></div>
               <div id="scene-errors" class="plot"></div>
             </article>
             <article class="card info-card">
@@ -829,9 +836,11 @@
                 ↓ Metrics + configuration
               </button>
               <p class="micro">
-                The no-enclosure rays can hit different surface points. Errors
-                are measured against the corresponding refracted-hit truth.
-                Exact-model correction approaches numerical zero by
+                Correction uses only the raw sensor-frame cloud and the selected
+                enclosure model. Ground truth is used only for the metrics shown
+                here. The no-enclosure rays can hit different surface points.
+                Errors are measured against the corresponding refracted-hit
+                truth. Exact-model correction approaches numerical zero by
                 construction; this is a consistency test, not measured sensor
                 accuracy.
               </p>
