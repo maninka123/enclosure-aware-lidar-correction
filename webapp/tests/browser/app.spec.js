@@ -80,13 +80,11 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   await page.locator("#save-scene").click();
   const sceneFile = await readFile(await (await saved).path());
   await page.locator("#remove-station").click();
-  await page
-    .locator("#load-scene")
-    .setInputFiles({
-      name: "scene.json",
-      mimeType: "application/json",
-      buffer: sceneFile,
-    });
+  await page.locator("#load-scene").setInputFiles({
+    name: "scene.json",
+    mimeType: "application/json",
+    buffer: sceneFile,
+  });
   await expect(page.locator("#station-list option")).toHaveCount(2);
   await expect(page.locator("#material")).toHaveValue("pc");
   await page.locator("#station-list").selectOption("0");
