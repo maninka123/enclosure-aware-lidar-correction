@@ -101,13 +101,6 @@
           <h2>Your optical system</h2>
           <span id="live-state" class="tag">LIVE</span>
         </div>
-        <label
-          >Starting configuration<select id="preset">
-            <option value="baseline">Python baseline · 4 mm</option>
-            <option value="legacy">Historical geometry · 6 mm</option>
-            <option value="centered">Centered source · zero deflection</option>
-          </select></label
-        >
         <details open>
           <summary>01 / Enclosure geometry</summary>
           <div class="pair">
@@ -272,7 +265,7 @@
             >↑ Load config<input id="load-config" type="file" accept=".json"
           /></label>
         </div>
-        <button id="reset" class="quiet full">Reset to Python baseline</button>
+        <button id="reset" class="quiet full">Reset parameters</button>
       </aside>
       <main>
         <div id="error" class="error" role="alert" hidden></div>
@@ -289,26 +282,50 @@
             <button id="pin" class="secondary">Pin a comparison</button>
           </div>
           <div id="designer-stats" class="stats"></div>
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <h2>Enclosure & sensor frame</h2>
-                <p>Drag to orbit · scroll to zoom · double-click to reset</p>
+          <div class="grid two designer-overview">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Enclosure & sensor frame</h2>
+                  <p>Drag to orbit · scroll to zoom · double-click to reset</p>
+                </div>
+                <div class="actions">
+                  <button data-view="geometry" data-camera="top">Top</button
+                  ><button data-view="geometry" data-camera="side">Side</button
+                  ><button data-expand="geometry">⛶ Expand</button>
+                </div>
               </div>
-              <div class="actions">
-                <button data-view="geometry" data-camera="top">Top</button
-                ><button data-view="geometry" data-camera="side">Side</button
-                ><button data-expand="geometry">⛶ Expand</button>
+              <div id="geometry" class="plot large"></div>
+              <div class="plot-legend">
+                <span class="dot teal">Incident beam</span
+                ><span class="dot amber">Through wall</span
+                ><span class="dot coral">Refracted exit</span
+                ><span>Dashed: unrefracted continuation</span>
               </div>
-            </div>
-            <div id="geometry" class="plot large"></div>
-            <div class="plot-legend">
-              <span class="dot teal">Incident beam</span
-              ><span class="dot amber">Through wall</span
-              ><span class="dot coral">Refracted exit</span
-              ><span>Dashed: unrefracted continuation</span>
-            </div>
-          </article>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2 id="designer-section-title">XZ beam projection</h2>
+                  <p>Selected ray &middot; scroll to zoom into the wall</p>
+                </div>
+                <div class="actions">
+                  <button data-focus="designer-section" data-hit="outer">
+                    Wall detail
+                  </button>
+                  <button data-focus="designer-section" data-hit="all">
+                    Full path
+                  </button>
+                  <button data-expand="designer-section">Expand</button>
+                </div>
+              </div>
+              <div id="designer-section" class="plot large"></div>
+              <p class="projection-note">
+                Projection onto the first selected plane. Off-plane rays may not
+                meet the dome outlines.
+              </p>
+            </article>
+          </div>
           <div class="toolbar">
             <label
               >First plane<select id="plane-a">

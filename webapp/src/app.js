@@ -259,7 +259,11 @@ async function render() {
         ],
         ["Wall index", fmt(config.nWall, 6), "n"],
       ]);
-      await charts.geometry("geometry", config, ray, length);
+      $("designer-section-title").textContent = `${a} beam projection`;
+      await Promise.all([
+        charts.geometry("geometry", config, ray, length),
+        charts.beam2d("designer-section", config, ray, length, a),
+      ]);
       const range = Number($("sweep-range").value),
         frame = $("sweep-frame").value;
       curveRows = [
@@ -375,7 +379,7 @@ document.querySelector(".tabs").addEventListener("keydown", (e) => {
 document
   .querySelectorAll(".controls input:not([type=file]),.controls select")
   .forEach((el) => {
-    if (!["material", "wavelength", "preset"].includes(el.id))
+    if (!["material", "wavelength"].includes(el.id))
       el.addEventListener("input", changed);
   });
 ["plane-a", "plane-b", "sweep-range", "sweep-frame"].forEach((id) =>
@@ -385,18 +389,6 @@ $("material").addEventListener("change", updateMaterial);
 $("wavelength").addEventListener("input", updateMaterial);
 $("reset").onclick = () => {
   applyConfig(baseline());
-  $("preset").value = "baseline";
-  changed();
-};
-$("preset").onchange = () => {
-  const c = baseline();
-  if ($("preset").value === "legacy") {
-    c.radius = 0.0765;
-    c.thickness = 0.006;
-    c.origin = [0, -0.01615, 0.053];
-  }
-  if ($("preset").value === "centered") c.origin = [0, 0, 0];
-  applyConfig(c);
   changed();
 };
 $("pin").onclick = () => {
@@ -481,7 +473,7 @@ document
           b.dataset.hit,
           config,
           ray,
-          b.dataset.focus === "beam-a"
+          ["beam-a", "designer-section"].includes(b.dataset.focus)
             ? $("plane-a").value
             : $("plane-b").value,
         )),

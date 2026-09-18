@@ -760,3 +760,31 @@ dialog::backdrop {
     display: none;
   }
 }
+
+/* Paired, compact geometry and ray detail on desktop. */
+.designer-overview.grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.designer-overview .card-head {
+  flex-wrap: wrap;
+  min-height: 78px;
+  align-content: center;
+  gap: 8px;
+}
+.designer-overview .plot.large {
+  height: 350px;
+}
+.designer-overview .plot-legend {
+  gap: 10px;
+}
+.projection-note {
+  margin: 0;
+  padding: 4px 20px 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (max-width: 1100px) {
+  .designer-overview.grid.two {
+    grid-template-columns: 1fr;
+  }
+}
