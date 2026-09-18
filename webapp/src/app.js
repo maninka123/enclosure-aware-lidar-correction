@@ -1100,6 +1100,25 @@ $("load-scene").onchange = async (e) => {
     if (!f) return;
     if (f.size > 2000000) throw Error("Scene JSON exceeds 2 MB.");
     const data = JSON.parse(await f.text());
+    // Multi-station scenes use the active station as the source of truth.
+    // Top-level fields remain a compatibility snapshot for older single-station files.
+    if (data.stations !== undefined) {
+      if (
+        !Array.isArray(data.stations) ||
+        data.stations.length < 1 ||
+        data.stations.length > 8 ||
+        !Number.isInteger(data.active_station) ||
+        data.active_station < 0 ||
+        data.active_station >= data.stations.length
+      )
+        throw Error("Invalid stations.");
+      const activeStation = data.stations[data.active_station];
+      if (!activeStation || typeof activeStation !== "object")
+        throw Error("Invalid active station.");
+      data.config = activeStation.config;
+      data.pose = activeStation.pose;
+      data.material = activeStation.material;
+    }
     validateObjects(data.objects);
     const c = fromPython(data.config);
     if (

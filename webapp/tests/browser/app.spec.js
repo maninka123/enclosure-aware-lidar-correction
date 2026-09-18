@@ -79,14 +79,32 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   const saved = page.waitForEvent("download");
   await page.locator("#save-scene").click();
   const sceneFile = await readFile(await (await saved).path());
+  const conflictingScene = JSON.parse(sceneFile);
+  conflictingScene.config = null;
+  conflictingScene.pose = { position: [99, 99, 99], rpy: [45, 45, 45] };
+  conflictingScene.material = { preset: "missing-material" };
+
   await page.locator("#remove-station").click();
   await page.locator("#load-scene").setInputFiles({
     name: "scene.json",
     mimeType: "application/json",
-    buffer: sceneFile,
+    buffer: Buffer.from(JSON.stringify(conflictingScene)),
   });
   await expect(page.locator("#station-list option")).toHaveCount(2);
   await expect(page.locator("#material")).toHaveValue("pc");
+  await expect(page.locator("#radius")).toHaveValue("74");
+  await expect(page.locator("#world-x")).toHaveValue(
+    String(
+      conflictingScene.stations[conflictingScene.active_station].pose
+        .position[0],
+    ),
+  );
+  await expect(page.locator("#world-roll")).toHaveValue(
+    String(
+      conflictingScene.stations[conflictingScene.active_station].pose.rpy[0],
+    ),
+  );
+  await expect(page.locator("#error")).toBeHidden();
   await page.locator("#station-list").selectOption("0");
   await expect(page.locator("#material")).toHaveValue("custom");
   await page.locator("#station-list").selectOption("1");

@@ -1,0 +1,4 @@
+# Tested direct dependencies for Python 3.10.14.
+# This is a reproducibility baseline, not a complete transitive lock file.
+numpy==1.26.4
+matplotlib==3.7.0

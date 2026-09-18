@@ -130,8 +130,7 @@ export function simulate(
   )
     throw Error("Invalid sensor world pose.");
   const world = rotation(...pose.rpy),
-    origin = add(pose.position, mv(world, c.origin)),
-    inverse = transpose(c.rotation);
+    origin = add(pose.position, mv(world, c.origin));
   const result = {
     bare: [],
     truth: [],

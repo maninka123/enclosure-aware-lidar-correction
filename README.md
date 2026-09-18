@@ -125,3 +125,16 @@ If you use this work in your research, please cite the associated paper:
 ```
 
 The root `CITATION.cff` provides the paper as the preferred citation through GitHub's **Cite this repository** menu. To make computational results reproducible, also record the repository commit and configuration used.
+
+## License
+
+The repository software is available under the [MIT License](LICENSE). Third-party
+libraries retain their own licenses; the associated paper is not relicensed by this repository.
+
+## Tested environment
+
+For the tested Python 3.10 baseline, install `python -m pip install -r requirements-tested.txt`
+followed by `python -m pip install -e .`. This pins the two direct scientific dependencies;
+it is not a complete environment lock. General installations use the compatible ranges
+in `pyproject.toml`. For the browser app, use Node.js 20 and `npm ci` inside `webapp`
+to install the committed dependency lock. See [validation](docs/validation.md).

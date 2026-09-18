@@ -82,3 +82,8 @@ JSON retains the numerical indices. Browser storage failures are reported before
 ### Interface design
 
 UI changes follow [Emil Kowalski's Apple Design skill](https://github.com/emilkowalski/skills/tree/main/skills/apple-design): system typography, clear hierarchy, immediate press feedback, restrained translucent navigation, accessible focus states and reduced-motion/transparency preferences. Keep the desktop designer split equally between the 3D enclosure and the two ray projections. Scientific plot colours distinguish beam segments independently of interface styling.
+
+For scene JSON with a `stations` array, `stations[active_station]` is authoritative
+for geometry, pose and material metadata. Top-level copies are ignored on import.
+Legacy scenes without stations continue to use top-level values. Exports synchronize
+both representations with the current controls.
