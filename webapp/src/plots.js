@@ -10,7 +10,7 @@ import {
   norm,
   angle,
 } from "./physics.js";
-const P = () => window.Plotly;
+
 export const colors = {
   teal: "#087f83",
   amber: "#d89c27",
@@ -20,34 +20,21 @@ export const colors = {
 };
 const colorscale = [
   [0, "#0f737b"],
-  [0.3, "#51b9b0"],
-  [0.6, "#ebd574"],
-  [0.8, "#e99b4c"],
+  [0.25, "#51b9b0"],
+  [0.5, "#ebd574"],
+  [0.75, "#e99b4c"],
   [1, "#ce554b"],
 ];
-const common = {
-  paper_bgcolor: "#fff",
-  plot_bgcolor: "#fff",
-  font: {
-    family:
-      "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif",
-    size: 11,
-    color: "#405b67",
-  },
-  margin: { l: 64, r: 26, t: 20, b: 55 },
-  hoverlabel: { bgcolor: "#102d39", font: { color: "#fff" } },
-  uirevision: "keep-view",
-};
-const options = {
-  responsive: true,
-  scrollZoom: true,
-  displaylogo: false,
-  modeBarButtonsToRemove: ["select2d", "lasso2d"],
-  toImageButtonOptions: { format: "png", scale: 2, filename: "enclosure-lab" },
-};
 export function plot(id, data, layout = {}) {
-  return P().react(id, data, { ...common, ...layout }, options);
+  return import("./rendering.js").then((r) => r.render(id, data, layout));
 }
+export const resize = (el) =>
+  import("./rendering.js").then((r) => r.resize(el));
+export const purge = (id) => import("./rendering.js").then((r) => r.purge(id));
+export const camera = (id, direction) =>
+  import("./rendering.js").then((r) => r.camera(id, direction));
+export const onPick = (id, handler) =>
+  import("./rendering.js").then((r) => r.onPick(id, handler));
 export function line3(points, name, color, width = 4, dash) {
   return {
     type: "scatter3d",
@@ -178,7 +165,7 @@ export function raySegments(c, t, length) {
       });
   return list;
 }
-export function geometry(id, c, t, length, withFan = true) {
+export function geometryData(c, t, length, withFan = true) {
   const data = [
     shellSurface(c, c.radius, 0.09, "#80b9b8"),
     shellSurface(c, c.radius + c.thickness, 0.14, "#80b9b8"),
@@ -285,7 +272,10 @@ export function geometry(id, c, t, length, withFan = true) {
     data.push(points3([mul(t.inner, 1000)], "Inner hit", colors.amber, 4));
   if (t.outer)
     data.push(points3([mul(t.outer, 1000)], "Outer hit", colors.coral, 4));
-  return plot(id, data, {
+  return data;
+}
+export function geometry(id, c, t, length, withFan = true) {
+  return plot(id, geometryData(c, t, length, withFan), {
     scene: sceneLayout("mm"),
     margin: { l: 5, r: 5, t: 8, b: 8 },
     showlegend: false,
@@ -578,35 +568,16 @@ export function objectMesh(obj) {
 export function focusPlot(id, hit, c, t, plane) {
   const p = t[hit];
   if (hit !== "all" && !p) return;
-  if (id === "beam3d") {
-    const range = hit === "all" ? null : c.thickness * 1000 * 4;
-    const updates = {};
-    ["x", "y", "z"].forEach((key, i) => {
-      updates[`scene.${key}axis.autorange`] = !range;
-      if (range)
-        updates[`scene.${key}axis.range`] = [
-          p[i] * 1000 - range,
-          p[i] * 1000 + range,
-        ];
-    });
-    updates["scene.camera"] = {
-      eye: { x: 1.5, y: -1.5, z: 1.2 },
-      up: { x: 0, y: 0, z: 1 },
-    };
-    P().relayout(id, updates);
-  } else {
-    const [a, b] = axes(plane),
-      width = Math.max(c.thickness * 1000 * 4, 0.1);
-    P().relayout(
-      id,
-      hit === "all"
-        ? { "xaxis.autorange": true, "yaxis.autorange": true }
+  const width = Math.max(c.thickness * 1000 * 4, 0.1);
+  const [a, b] = axes(plane);
+  const bounds =
+    hit === "all"
+      ? null
+      : id === "beam3d"
+        ? { center: p.map((v) => v * 1000), span: width * 2 }
         : {
-            "xaxis.autorange": false,
-            "yaxis.autorange": false,
-            "xaxis.range": [p[a] * 1000 - width, p[a] * 1000 + width],
-            "yaxis.range": [p[b] * 1000 - width, p[b] * 1000 + width],
-          },
-    );
-  }
+            x: [p[a] * 1000 - width, p[a] * 1000 + width],
+            y: [p[b] * 1000 - width, p[b] * 1000 + width],
+          };
+  return import("./rendering.js").then((r) => r.focus(id, bounds));
 }

@@ -2,7 +2,7 @@
 
 **[Open the app](https://maninka123.github.io/enclosure-aware-lidar-correction/)**
 
-A static browser application for the same concentric spherical-shell model as the Python package. No server processes your clouds. Plotly is bundled locally; the deployed app has no runtime CDN or analytics dependency. Source links open external sites only when selected.
+A static browser application for the same concentric spherical-shell model as the Python package. No server processes your clouds. Three.js and Apache ECharts are bundled locally; the deployed app has no runtime CDN or analytics dependency. Source links open external sites only when selected.
 
 ## Workspaces
 
@@ -13,9 +13,11 @@ A static browser application for the same concentric spherical-shell model as th
 | Deflection atlas | Selectable XY/XZ/YZ sweeps in the designer, 0–180° or 0–360° ranges, full-sphere direction colours and azimuth/polar heatmap |
 | Point clouds | Local CSV/ASCII PCD input, three range models, raw/corrected overlay, displacement histogram, CSV/PCD output and per-row status report |
 | Scene lab | Editable opaque planes, spheres and boxes; up to eight independent sensor stations; station-specific enclosure parameters; JSON scene import/export; scan simulation and ground-truth comparisons |
-| Physics & materials | Coordinate conventions, Snell refraction, range assumptions, material provenance and paper citation |
 
-Use a plot's camera icon for a PNG export. Plots support orbit/pan/zoom; each relevant card has an expanded dialog. The designer exports curve CSVs, the atlas exports map CSVs, and scene/point-cloud workspaces export clouds and reports. Config JSON is compatible with the Python CLI. Scene JSON is a separate app format containing objects and sensor stations, not a general 3D mesh format.
+
+The header **Model & assumptions** button opens equations, coordinate conventions, material sources, paper citation and the simplified-model scope in a dialog.
+
+Use **Save PNG** in a view for image export. Plots support orbit/pan/zoom; each relevant card has an expanded dialog. The designer exports curve CSVs, the atlas exports map CSVs, and scene/point-cloud workspaces export clouds and reports. Config JSON is compatible with the Python CLI. Scene JSON is a separate app format containing objects and sensor stations, not a general 3D mesh format.
 
 ## Local development
 
@@ -36,7 +38,7 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-The app source is in `src/`; the build writes only to `dist/`, which is ignored by Git. GitHub Actions tests the app and deploys the static build to Pages. Plotly's MIT license is copied into `dist/vendor/Plotly-LICENSE`; the repository's own software license remains separate.
+The app source is in `src/`; the build writes only to `dist/`, which is ignored by Git. GitHub Actions tests the app and deploys the static build to Pages. Third-party licenses and notices for Three.js, Apache ECharts and zrender are included under `dist/vendor/`; the repository software has its own MIT license.
 
 ## Data and coordinate conventions
 
@@ -87,3 +89,17 @@ For scene JSON with a `stations` array, `stations[active_station]` is authoritat
 for geometry, pose and material metadata. Top-level copies are ignored on import.
 Legacy scenes without stations continue to use top-level values. Exports synchronize
 both representations with the current controls.
+
+## Rendering and navigation
+
+Three.js renders the transparent dome, ray paths, sensor axes, point clouds and scene
+objects. Drag to orbit, right-drag to pan, and scroll/pinch to zoom. Top/Side buttons
+provide fixed views; Reset view fits the geometry. A focused 3D canvas also accepts
+arrow keys to orbit, +/- to zoom and 0 to reset. Hover reveals coordinates and colour
+values; Scene Lab's click mode can place the enclosure frame or selected object.
+
+ECharts renders the planar paths, unsmoothed deflection curves, heatmap, histogram
+and error bars. Scroll to zoom, drag to pan, and use Wall detail to focus on an
+interface. Planar geometry retains equal axis scale. Invalid-ray gaps stay empty.
+Expand and Save PNG work in both engines. Geometry/ray tracing and exported point
+clouds use the unchanged numerical model. WebGL 2 is required for the 3D views.

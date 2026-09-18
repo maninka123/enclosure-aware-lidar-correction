@@ -127,35 +127,22 @@ test("scene closest intersections and reconstruction", () => {
 });
 
 test("3D dome centre and sensor source retain independent coordinates", async () => {
-  const { geometry } = await import("../src/plots.js");
-  const previous = globalThis.window;
-  let data;
-  globalThis.window = {
-    Plotly: {
-      react: (_id, traces) => {
-        data = traces;
-      },
-    },
+  const { geometryData } = await import("../src/plots.js");
+  const c = baseline();
+  c.center = [0.001, 0.002, 0.003];
+  const data = geometryData(c, trace([0, 0, 1], c), 0.1, false);
+  const xyz = (name) => {
+    const t = data.find((t) => t.name === name);
+    return [t.x[0], t.y[0], t.z[0]];
   };
-  try {
-    const c = baseline();
-    c.center = [0.001, 0.002, 0.003];
-    await geometry("test", c, trace([0, 0, 1], c), 0.1, false);
-    const xyz = (name) => {
-      const t = data.find((t) => t.name === name);
-      return [t.x[0], t.y[0], t.z[0]];
-    };
-    assert.deepEqual(xyz("Dome centre"), [1, 2, 3]);
-    assert.deepEqual(xyz("Coordinate origin"), [0, 0, 0]);
-    assert.deepEqual(
-      xyz("LiDAR source"),
-      c.origin.map((v) => v * 1000),
-    );
-    assert.deepEqual(
-      xyz("Sensor X"),
-      c.origin.map((v) => v * 1000),
-    );
-  } finally {
-    globalThis.window = previous;
-  }
+  assert.deepEqual(xyz("Dome centre"), [1, 2, 3]);
+  assert.deepEqual(xyz("Coordinate origin"), [0, 0, 0]);
+  assert.deepEqual(
+    xyz("LiDAR source"),
+    c.origin.map((v) => v * 1000),
+  );
+  assert.deepEqual(
+    xyz("Sensor X"),
+    c.origin.map((v) => v * 1000),
+  );
 });

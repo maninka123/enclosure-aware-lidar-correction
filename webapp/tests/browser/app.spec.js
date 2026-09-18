@@ -4,7 +4,7 @@ test("designer, materials, beam inspection and atlas", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(page.locator("#geometry .svg-container")).toBeVisible();
+  await expect(page.locator("#geometry canvas")).toBeVisible();
   await expect(page.locator("#error")).toBeHidden();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/designer.png", fullPage: true });
@@ -17,16 +17,28 @@ test("designer, materials, beam inspection and atlas", async ({ page }) => {
   await page.locator("#plane-b").selectOption("XY");
   await expect(page.locator("#curve-b-title")).toContainText("XY");
   await page.getByRole("tab", { name: /Beam inspector/ }).click();
-  await expect(page.locator("#beam3d .svg-container")).toBeVisible();
+  await expect(page.locator("#beam3d canvas")).toBeVisible();
   await page.locator('[data-focus="beam-a"][data-hit="inner"]').click();
   await page.locator('[data-expand="beam3d"]').click();
   await expect(page.locator("#plot-dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#plot-dialog")).toBeHidden();
   await page.getByRole("tab", { name: /Deflection atlas/ }).click();
-  await expect(page.locator("#heatmap .svg-container")).toBeVisible();
+  await expect(page.locator("#heatmap canvas").first()).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/atlas.png", fullPage: true });
+  await page.locator("#open-model").click();
+  await expect(page.locator("#model-dialog")).toBeVisible();
+  await expect(page.locator("#model-dialog")).toContainText("Apply Snell");
+  await expect(page.locator("#model-dialog")).toContainText(
+    "not an exact reproduction",
+  );
+  await page.screenshot({ path: "test-results/model-dialog.png" });
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#model-dialog")).not.toBeVisible();
+  await expect(
+    page.getByRole("tab", { name: /Deflection atlas/ }),
+  ).toHaveAttribute("aria-selected", "true");
   expect(errors).toEqual([]);
 });
 test("cloud correction, downloads and stale result protection", async ({
@@ -118,7 +130,7 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
 test("mobile navigation and invalid geometry", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(page.locator("#geometry .svg-container")).toBeVisible();
+  await expect(page.locator("#geometry canvas")).toBeVisible();
   await page.locator("#toggle-controls").click();
   await page.locator("#ox").fill("200");
   await expect(page.locator("#error")).toContainText("inside");
@@ -164,4 +176,85 @@ test("named material library persists and travels with scenes", async ({
   await expect(page.locator("#material")).toHaveValue(key);
   await expect(page.locator("#nwall")).toHaveValue("1.54321");
   await expect(page.locator("#error")).toBeHidden();
+});
+
+test("new renderers preserve view controls, picking, aspect and PNG export", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await expect(page.locator("#geometry")).toHaveAttribute(
+    "data-renderer",
+    "three",
+  );
+  await expect(page.locator("#designer-section")).toHaveAttribute(
+    "data-renderer",
+    "echarts",
+  );
+  expect(await page.evaluate(() => typeof window.Plotly)).toBe("undefined");
+  const before = await page.locator("#geometry").getAttribute("data-camera");
+  await page.locator('[data-view="geometry"][data-camera="top"]').click();
+  await expect(page.locator("#geometry")).not.toHaveAttribute(
+    "data-camera",
+    before,
+  );
+  const bounds = JSON.parse(
+    await page.locator("#designer-section").getAttribute("data-bounds"),
+  );
+  await page
+    .locator('[data-focus="designer-section"][data-hit="outer"]')
+    .click();
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(
+          await page.locator("#designer-section").getAttribute("data-bounds"),
+        ).y[1],
+    )
+    .toBeLessThan(bounds.y[1]);
+  for (const id of ["geometry", "designer-section"]) {
+    const download = page.waitForEvent("download");
+    await page
+      .locator(`#${id}`)
+      .getByRole("button", { name: "Save PNG" })
+      .click();
+    const file = await download,
+      bytes = await readFile(await file.path());
+    expect(file.suggestedFilename()).toBe(`${id}.png`);
+    expect(bytes.subarray(1, 4).toString()).toBe("PNG");
+    expect(bytes.readUInt32BE(16)).toBeGreaterThan(300);
+    expect(bytes.length).toBeGreaterThan(5000);
+  }
+  await page.locator('[data-expand="designer-section"]').click();
+  await expect(
+    page.locator("#plot-dialog #designer-section canvas").first(),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("tab", { name: /Scene lab/ }).click();
+  await expect(page.locator("#scene-status")).toContainText("returns");
+  await page.locator("#scene-auto").uncheck();
+  await page.locator("#scene-click").selectOption("sensor");
+  const canvas = page.locator("#scene3d canvas");
+  await canvas.scrollIntoViewIfNeeded();
+  const rect = await canvas.boundingBox();
+  // Find a visible scene hit using the viewer's coordinate tooltip, then place the station.
+  let picked = false;
+  for (const x of [0.35, 0.5, 0.65]) {
+    for (const y of [0.4, 0.55, 0.7]) {
+      await page.mouse.move(rect.x + rect.width * x, rect.y + rect.height * y);
+      if (await page.locator("#scene3d .view-tooltip").isVisible()) {
+        await page.mouse.click(
+          rect.x + rect.width * x,
+          rect.y + rect.height * y,
+        );
+        picked = true;
+        break;
+      }
+    }
+    if (picked) break;
+  }
+  expect(picked).toBe(true);
+  expect(await page.locator("#world-z").inputValue()).not.toBe("0");
+  expect(errors).toEqual([]);
 });

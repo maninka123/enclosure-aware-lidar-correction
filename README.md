@@ -14,7 +14,7 @@ This repository accompanies the enclosure-refraction topic in [Ranasinghe et al.
 
 **[Launch Enclosure Lab →](https://maninka123.github.io/enclosure-aware-lidar-correction/)**
 
-Design a dome, position and rotate the LiDAR, inspect 2D/3D beam paths, and explore XY/XZ/YZ deflection curves. Separate tabs provide a 3D deviation map, local CSV/PCD correction, a scene builder with sensor stations, and explanations of the physics. Configurations, plots, point clouds and reports can be downloaded.
+Design a dome, position and rotate the LiDAR, inspect 2D/3D beam paths, and explore XY/XZ/YZ deflection curves. Separate tabs provide a 3D deviation map, local CSV/PCD correction, and a scene builder with sensor stations. Equations and assumptions are available from the header dialog. Configurations, plots, point clouds and reports can be downloaded.
 
 The app runs entirely in your browser. Uploaded clouds stay on your device. See the [web app guide](webapp/README.md) for supported formats, material sources, scene assumptions and local development.
 

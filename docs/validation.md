@@ -11,6 +11,11 @@ The synthetic forward model and inverse use the same geometry and ray tracer. Th
 
 The [GitHub workflow passed on Python 3.10 and 3.12](https://github.com/maninka123/enclosure-aware-lidar-correction/actions/runs/35339077546) for commit `63ed02e`. It assumes this standalone folder is the repository root.
 
-The browser app additionally has nine Node.js tests for the ray model, material presets, file handling and synthetic scene reconstruction. Five Playwright tests exercise desktop/mobile rendering, material edits, plane selection, interface zoom, expanded dialogs, correction and export, invalidation after parameter edits, scene edits, and independent sensor-station configurations, active-station authority over conflicting top-level scene fields, and persistence/scene import of named materials. Local screenshots of the designer, atlas, cloud view and scene lab were inspected. The Pages workflow runs the browser tests before deploying.
+The browser app additionally has nine Node.js tests for the ray model, material presets, file handling and synthetic scene reconstruction. Six Playwright tests exercise desktop/mobile rendering, material edits, plane selection, interface zoom, expanded dialogs, correction and export, invalidation after parameter edits, scene edits, and independent sensor-station configurations, active-station authority over conflicting top-level scene fields, and persistence/scene import of named materials. Local screenshots of the designer, atlas, cloud view and scene lab were inspected. The Pages workflow runs the browser tests before deploying.
 
 Use `requirements-tested.txt` on Python 3.10 to reproduce the tested direct dependency versions. CI tests this pinned baseline on Python 3.10 and the declared compatible dependency ranges on Python 3.12. JavaScript dependencies are pinned in `webapp/package-lock.json`; install with `npm ci`.
+
+The rendering migration replaces Plotly with locally bundled Three.js and ECharts.
+The browser suite additionally checks both engines, camera changes, wall-detail focus,
+PNG file downloads, expanded views, scene picking and the model dialog. Numerical
+regressions continue to run independently of the rendering engines.

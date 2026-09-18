@@ -361,10 +361,12 @@ async function render() {
     error(e.message);
   }
 }
+$("open-model").onclick = () => $("model-dialog").showModal();
+$("close-model").onclick = () => $("model-dialog").close();
 async function tab(name) {
   if (
     !$(name) ||
-    !["designer", "beam", "atlas", "cloud", "scene", "learn"].includes(name)
+    !["designer", "beam", "atlas", "cloud", "scene"].includes(name)
   )
     name = "designer";
   active = name;
@@ -482,19 +484,9 @@ $("export-atlas").onclick = () => {
       "text/csv",
     );
 };
-document.querySelectorAll("[data-camera]").forEach(
-  (b) =>
-    (b.onclick = () =>
-      window.Plotly.relayout(b.dataset.view, {
-        "scene.camera": {
-          eye:
-            b.dataset.camera === "top"
-              ? { x: 0, y: 0, z: 2.5 }
-              : { x: 0, y: -2.5, z: 0.05 },
-          up: { x: 0, y: 0, z: 1 },
-        },
-      })),
-);
+document.querySelectorAll("[data-camera]").forEach((b) => {
+  b.onclick = () => charts.camera(b.dataset.view, b.dataset.camera);
+});
 document
   .querySelectorAll("[data-focus]")
   .forEach(
@@ -521,13 +513,13 @@ document.querySelectorAll("[data-expand]").forEach(
       expanded = plot;
       $("dialog-content").append(plot);
       $("plot-dialog").showModal();
-      window.Plotly.Plots.resize(plot);
+      charts.resize(plot);
     }),
 );
 function closeExpanded() {
   if (expanded) {
     placeholder.replaceWith(expanded);
-    window.Plotly.Plots.resize(expanded);
+    charts.resize(expanded);
     expanded = null;
   }
 }
@@ -581,7 +573,7 @@ async function loadCloud(text, name) {
   cloudLoaded = false;
   $("correct-cloud").disabled = true;
   for (const id of ["cloud3d", "cloud-hist"]) {
-    window.Plotly.purge(id);
+    await charts.purge(id);
     $(id).replaceChildren();
   }
   $("cloud-stats").replaceChildren();
@@ -1058,8 +1050,7 @@ function drawScene() {
       legend: { orientation: "h", x: 0, y: 1 },
     })
     .then(() => {
-      $("scene3d").removeAllListeners("plotly_click");
-      $("scene3d").on("plotly_click", (event) => {
+      charts.onPick("scene3d", (event) => {
         const p = event.points[0],
           mode = $("scene-click").value;
         if (mode === "inspect") return;
@@ -1254,14 +1245,9 @@ materialTable();
 rangeNote();
 objectEditor();
 window.addEventListener("hashchange", () => tab(location.hash.slice(1)));
-if (!window.Plotly) {
-  await new Promise((resolve) =>
-    window.addEventListener("load", resolve, { once: true }),
-  );
-}
 await tab(location.hash.slice(1) || "designer");
 window.addEventListener("resize", () =>
   document
-    .querySelectorAll("section:not([hidden]) .js-plotly-plot")
-    .forEach((p) => window.Plotly.Plots.resize(p)),
+    .querySelectorAll("section:not([hidden]) .research-view")
+    .forEach((p) => charts.resize(p)),
 );

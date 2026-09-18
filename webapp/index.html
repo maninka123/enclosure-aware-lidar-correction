@@ -9,7 +9,6 @@
     />
     <title>Enclosure Lab · LiDAR optics</title>
     <link rel="stylesheet" href="style.css" />
-    <script defer src="vendor/plotly.min.js"></script>
     <script type="module" src="src/app.js"></script>
   </head>
   <body>
@@ -21,6 +20,14 @@
         ></a
       >
       <div class="toplinks">
+        <button
+          id="open-model"
+          type="button"
+          aria-haspopup="dialog"
+          aria-controls="model-dialog"
+        >
+          Model &amp; assumptions
+        </button>
         <span class="privacy"><i></i> Runs on your device</span
         ><a
           href="https://github.com/maninka123/enclosure-aware-lidar-correction"
@@ -80,15 +87,6 @@
         aria-selected="false"
       >
         05 <span>Scene lab</span>
-      </button>
-      <button
-        role="tab"
-        id="tab-learn"
-        aria-controls="learn"
-        data-tab="learn"
-        aria-selected="false"
-      >
-        06 <span>Physics & materials</span>
       </button>
     </nav>
     <button id="toggle-controls" class="mobile-controls">
@@ -840,125 +838,6 @@
             </article>
           </div>
         </section>
-        <section id="learn" role="tabpanel" aria-labelledby="tab-learn" hidden>
-          <div class="page-heading">
-            <div>
-              <p class="eyebrow">UNDERSTAND THE MODEL</p>
-              <h1>Refraction, made visible.</h1>
-              <p>The assumptions behind the pictures and the numbers.</p>
-            </div>
-          </div>
-          <div class="grid two">
-            <article class="card info-card">
-              <span class="step-number">01</span>
-              <h2>Meet the inner surface</h2>
-              <p>
-                A ray travels from the source to the inner sphere. The surface
-                normal points radially away from the dome centre. A centred
-                source hits normally and has no angular deflection.
-              </p>
-              <div class="equation">
-                P = O + t d &nbsp; · &nbsp; |P − C| = R
-              </div>
-            </article>
-            <article class="card info-card">
-              <span class="step-number">02</span>
-              <h2>Apply Snell’s law twice</h2>
-              <p>
-                The ray bends toward the normal entering a higher-index
-                material, then bends again on leaving it. The two normals
-                differ, so the bends do not generally cancel.
-              </p>
-              <div class="equation">n₁ sin θ₁ = n₂ sin θ₂</div>
-              <p>
-                When no transmitted ray exists, total internal reflection is
-                reported instead of drawing a fictitious ray.
-              </p>
-            </article>
-            <article class="card info-card">
-              <span class="step-number">03</span>
-              <h2>Recover the endpoint</h2>
-              <p>
-                Direction-only correction keeps the reported radius. Full path
-                correction starts at the actual outer hit and accounts for
-                travel inside the enclosure.
-              </p>
-              <div class="equation">
-                P = P<sub>outer</sub> + L<sub>outside</sub> d<sub>exit</sub>
-              </div>
-              <p>
-                Optical mode assumes n<sub>ref</sub> r = Σ nᵢ Lᵢ. A sensor’s
-                reported time-of-flight range already includes the round-trip
-                factor; do not halve it again.
-              </p>
-            </article>
-            <article class="card info-card">
-              <span class="step-number">04</span>
-              <h2>Use the right material data</h2>
-              <p>
-                Refraction uses phase refractive index. Pulse timing depends on
-                group index, which may differ. This app uses the same configured
-                index for both, matching the simplified Python model. For
-                precision range work, characterize dispersion and instrument
-                bias.
-              </p>
-              <p>
-                Nominal polymer values are starting points, not validated
-                infrared values or structural recommendations.
-              </p>
-            </article>
-          </div>
-          <article class="card info-card">
-            <h2>Material presets & sources</h2>
-            <div id="material-table"></div>
-            <p>
-              Air defaults to the project's legacy constant. Outside-medium
-              indices are editable. Surface reflection losses, absorption,
-              scattering, coatings, finite beam width, housing rims,
-              nonconcentric surfaces, detector offsets and multipath are not
-              modeled.
-            </p>
-          </article>
-          <article class="card info-card">
-            <h2>Coordinate conventions</h2>
-            <p>
-              All physics runs in metres. Enclosure controls use millimetres;
-              scene controls use metres. Sensor +Z is forward. Roll, pitch, yaw
-              form the right-handed active rotation Rz Ry Rx. In a planar sweep,
-              0° is the first named axis and 90° is the second: XZ sweeps from
-              +X to +Z; YZ from +Y to +Z; XY from +X to +Y.
-            </p>
-            <p>
-              Only the upper shell (relative to the centre Z) is active in
-              hemisphere mode. A source can lie below the equatorial plane if it
-              remains inside the sphere; no base plate is simulated. Python
-              configuration JSON preserves the exact rotation matrix.
-            </p>
-          </article>
-          <article class="card info-card">
-            <h2>Cite the research</h2>
-            <p>
-              Ranasinghe, P., Patra, D., Mawathage, A., Banerjee, B., Ye, C.,
-              Nan, B., & Raval, S. (2026).
-              <em
-                >Correcting time offsets and enclosure-induced measurement
-                distortions in LiDAR–camera systems.</em
-              >
-              Measurement, 285, 122285.
-            </p>
-            <a
-              href="https://doi.org/10.1016/j.measurement.2026.122285"
-              target="_blank"
-              rel="noopener"
-              >Read the paper ↗</a
-            >
-            <p>
-              This app extends the spherical ray model. It does not reproduce
-              the paper’s full calibration or lookup-table workflow. Scene
-              results are synthetic.
-            </p>
-          </article>
-        </section>
         <footer>
           Enclosure Lab <span>·</span> Spherical refraction research toolkit
           <span>·</span>
@@ -969,6 +848,140 @@
         </footer>
       </main>
     </div>
+    <dialog id="model-dialog" aria-labelledby="model-title">
+      <div class="dialog-head">
+        <div>
+          <h2 id="model-title">Model & assumptions</h2>
+          <p>Equations, coordinates, material sources and research scope.</p>
+        </div>
+        <button
+          id="close-model"
+          type="button"
+          aria-label="Close model and assumptions"
+        >
+          Close
+        </button>
+      </div>
+      <div class="model-content">
+        <aside class="model-scope" aria-label="Relationship to the paper">
+          <strong>About these results</strong>
+          <p>
+            This online app is a simplified, interactive implementation inspired
+            by the paper's MATLAB experiments. Its configurations, assumptions
+            and calibration workflow are not identical to the paper, so
+            numerical results and figures may differ. Use it to explore
+            refraction and correction; it is not an exact reproduction of the
+            published results.
+          </p>
+        </aside>
+        <div class="grid two">
+          <article class="card info-card">
+            <span class="step-number">01</span>
+            <h2>Meet the inner surface</h2>
+            <p>
+              A ray travels from the source to the inner sphere. The surface
+              normal points radially away from the dome centre. A centred source
+              hits normally and has no angular deflection.
+            </p>
+            <div class="equation">P = O + t d &nbsp; · &nbsp; |P − C| = R</div>
+          </article>
+          <article class="card info-card">
+            <span class="step-number">02</span>
+            <h2>Apply Snell’s law twice</h2>
+            <p>
+              The ray bends toward the normal entering a higher-index material,
+              then bends again on leaving it. The two normals differ, so the
+              bends do not generally cancel.
+            </p>
+            <div class="equation">n₁ sin θ₁ = n₂ sin θ₂</div>
+            <p>
+              When no transmitted ray exists, total internal reflection is
+              reported instead of drawing a fictitious ray.
+            </p>
+          </article>
+          <article class="card info-card">
+            <span class="step-number">03</span>
+            <h2>Recover the endpoint</h2>
+            <p>
+              Direction-only correction keeps the reported radius. Full path
+              correction starts at the actual outer hit and accounts for travel
+              inside the enclosure.
+            </p>
+            <div class="equation">
+              P = P<sub>outer</sub> + L<sub>outside</sub> d<sub>exit</sub>
+            </div>
+            <p>
+              Optical mode assumes n<sub>ref</sub> r = Σ nᵢ Lᵢ. A sensor’s
+              reported time-of-flight range already includes the round-trip
+              factor; do not halve it again.
+            </p>
+          </article>
+          <article class="card info-card">
+            <span class="step-number">04</span>
+            <h2>Use the right material data</h2>
+            <p>
+              Refraction uses phase refractive index. Pulse timing depends on
+              group index, which may differ. This app uses the same configured
+              index for both, matching the simplified Python model. For
+              precision range work, characterize dispersion and instrument bias.
+            </p>
+            <p>
+              Nominal polymer values are starting points, not validated infrared
+              values or structural recommendations.
+            </p>
+          </article>
+        </div>
+        <article class="card info-card">
+          <h2>Material presets & sources</h2>
+          <div id="material-table"></div>
+          <p>
+            Air defaults to the project's legacy constant. Outside-medium
+            indices are editable. Surface reflection losses, absorption,
+            scattering, coatings, finite beam width, housing rims, nonconcentric
+            surfaces, detector offsets and multipath are not modeled.
+          </p>
+        </article>
+        <article class="card info-card">
+          <h2>Coordinate conventions</h2>
+          <p>
+            All physics runs in metres. Enclosure controls use millimetres;
+            scene controls use metres. Sensor +Z is forward. Roll, pitch, yaw
+            form the right-handed active rotation Rz Ry Rx. In a planar sweep,
+            0° is the first named axis and 90° is the second: XZ sweeps from +X
+            to +Z; YZ from +Y to +Z; XY from +X to +Y.
+          </p>
+          <p>
+            Only the upper shell (relative to the centre Z) is active in
+            hemisphere mode. A source can lie below the equatorial plane if it
+            remains inside the sphere; no base plate is simulated. Python
+            configuration JSON preserves the exact rotation matrix.
+          </p>
+        </article>
+        <article class="card info-card">
+          <h2>Cite the research</h2>
+          <p>
+            Ranasinghe, P., Patra, D., Mawathage, A., Banerjee, B., Ye, C., Nan,
+            B., & Raval, S. (2026).
+            <em
+              >Correcting time offsets and enclosure-induced measurement
+              distortions in LiDAR–camera systems.</em
+            >
+            Measurement, 285, 122285.
+          </p>
+          <a
+            href="https://doi.org/10.1016/j.measurement.2026.122285"
+            target="_blank"
+            rel="noopener"
+            >Read the paper ↗</a
+          >
+          <p>
+            This app extends the spherical ray model. It does not reproduce the
+            paper’s full calibration or lookup-table workflow. Scene results are
+            synthetic.
+          </p>
+        </article>
+      </div>
+    </dialog>
     <dialog id="material-dialog" aria-labelledby="material-dialog-title">
       <form id="material-form">
         <div class="dialog-head">
