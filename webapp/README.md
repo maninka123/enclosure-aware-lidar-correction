@@ -68,3 +68,13 @@ The app includes three sourced wall presets and a custom index:
 Polymer presets are not extrapolated to infrared wavelengths. The wavelength control updates N-BK7 only. A nominal material value is not a calibrated index for a particular protective dome. Air starts from the Python legacy constant 1.000293, and both inside/outside indices are editable.
 
 The optical range approximation uses the same configured index for ray bending and timing. Phase and group indices can differ; instrument range offsets, firmware compensation, wavelength and temperature require independent characterization. Material selection here is optical exploration, not a mechanical or safety qualification.
+
+### Named materials
+
+Select the inside medium, outside medium and dome material independently. Air, vacuum,
+water and the existing dome materials include preset indices; nominal values are not
+calibrated for every wavelength or operating condition. Select Custom for direct entry,
+or use **Add material** to save a name, phase index and optional measurement notes.
+The shared library is stored locally in this browser (up to 100 entries). Scene JSON
+includes the library and selections for use on another computer; Python configuration
+JSON retains the numerical indices. Browser storage failures are reported before saving.

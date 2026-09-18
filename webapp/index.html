@@ -153,6 +153,9 @@
               <option value="bk7">SCHOTT N-BK7 · dispersion</option>
             </select></label
           >
+          <button type="button" data-add-material="material">
+            + Add dome material
+          </button>
           <div class="pair">
             <label
               >Wavelength <em>nm</em
@@ -176,26 +179,36 @@
           </div>
           <p id="material-note" class="micro"></p>
           <div class="pair">
+            <label>Inside medium<select id="inside-material"></select></label>
+            <label>Outside medium<select id="outside-material"></select></label>
+          </div>
+          <div class="pair">
             <label
               >Inside index<input
                 id="ninside"
                 type="number"
                 value="1.000293"
-                step=".000001"
-                min=".1" /></label
-            ><label
+                step="any"
+                min=".1"
+            /></label>
+            <label
               >Outside index<input
                 id="noutside"
                 type="number"
                 value="1.000293"
-                step=".000001"
+                step="any"
                 min=".1"
             /></label>
           </div>
-          <p class="micro">
-            Air starts at 1.000293 (legacy assumption). Set indices for your
-            wavelength, temperature and surrounding medium.
-          </p>
+          <div class="pair">
+            <button type="button" data-add-material="inside-material">
+              + Add inside medium
+            </button>
+            <button type="button" data-add-material="outside-material">
+              + Add outside medium
+            </button>
+          </div>
+          <p id="medium-note" class="micro"></p>
         </details>
         <details open>
           <summary>03 / LiDAR position & orientation</summary>
@@ -303,29 +316,44 @@
                 ><span>Dashed: unrefracted continuation</span>
               </div>
             </article>
-            <article class="card">
-              <div class="card-head">
-                <div>
-                  <h2 id="designer-section-title">XZ beam projection</h2>
-                  <p>Selected ray &middot; scroll to zoom into the wall</p>
+            <div class="designer-projections">
+              <article class="card">
+                <div class="card-head">
+                  <h2 id="designer-section-title">XZ ray path</h2>
+                  <div class="actions">
+                    <button data-focus="designer-section" data-hit="outer">
+                      Wall detail
+                    </button>
+                    <button data-focus="designer-section" data-hit="all">
+                      Full path
+                    </button>
+                    <button data-expand="designer-section">Expand</button>
+                  </div>
                 </div>
-                <div class="actions">
-                  <button data-focus="designer-section" data-hit="outer">
-                    Wall detail
-                  </button>
-                  <button data-focus="designer-section" data-hit="all">
-                    Full path
-                  </button>
-                  <button data-expand="designer-section">Expand</button>
+                <div id="designer-section" class="plot"></div>
+              </article>
+              <article class="card">
+                <div class="card-head">
+                  <h2 id="designer-section-b-title">YZ ray path</h2>
+                  <div class="actions">
+                    <button data-focus="designer-section-b" data-hit="outer">
+                      Wall detail
+                    </button>
+                    <button data-focus="designer-section-b" data-hit="all">
+                      Full path
+                    </button>
+                    <button data-expand="designer-section-b">Expand</button>
+                  </div>
                 </div>
-              </div>
-              <div id="designer-section" class="plot large"></div>
-              <p class="projection-note">
-                Projection onto the first selected plane. Off-plane rays may not
-                meet the dome outlines.
-              </p>
-            </article>
+                <div id="designer-section-b" class="plot"></div>
+              </article>
+            </div>
           </div>
+          <p class="projection-note">
+            The same selected ray projected onto both planes. Off-plane rays may
+            not meet the dome outlines. Scroll to zoom; use Wall detail to
+            inspect refraction.
+          </p>
           <div class="toolbar">
             <label
               >First plane<select id="plane-a">
@@ -941,6 +969,42 @@
         </footer>
       </main>
     </div>
+    <dialog id="material-dialog" aria-labelledby="material-dialog-title">
+      <form id="material-form">
+        <div class="dialog-head">
+          <h2 id="material-dialog-title">Add material</h2>
+          <button type="button" id="cancel-material">Cancel</button>
+        </div>
+        <p>
+          Save a named material for all three material lists in this browser.
+        </p>
+        <label
+          >Name<input
+            id="new-material-name"
+            required
+            maxlength="60"
+            placeholder="e.g. Measured acrylic at 905 nm"
+        /></label>
+        <label
+          >Phase refractive index<input
+            id="new-material-index"
+            type="number"
+            required
+            min="0.1"
+            max="10"
+            step="any"
+            value="1.5"
+        /></label>
+        <label
+          >Conditions / notes (optional)<input
+            id="new-material-note"
+            maxlength="200"
+            placeholder="Wavelength, temperature, source or grade"
+        /></label>
+        <p id="material-save-error" role="alert"></p>
+        <button type="submit" class="primary">Save and use material</button>
+      </form>
+    </dialog>
     <dialog id="plot-dialog">
       <div class="dialog-head">
         <h2>Expanded view</h2>

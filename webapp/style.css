@@ -771,8 +771,25 @@ dialog::backdrop {
   align-content: center;
   gap: 8px;
 }
+.designer-overview > .card {
+  display: flex;
+  flex-direction: column;
+}
 .designer-overview .plot.large {
-  height: 350px;
+  height: 450px;
+  flex: 1;
+}
+.designer-projections {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.designer-projections .card-head {
+  min-height: 54px;
+  padding: 12px 16px 4px;
+}
+.designer-projections .plot {
+  height: 225px;
 }
 .designer-overview .plot-legend {
   gap: 10px;
@@ -787,4 +804,32 @@ dialog::backdrop {
   .designer-overview.grid.two {
     grid-template-columns: 1fr;
   }
+}
+
+#material-dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 24px;
+}
+#material-dialog form {
+  display: grid;
+  gap: 16px;
+}
+#material-dialog label {
+  display: grid;
+  gap: 6px;
+}
+#material-dialog .dialog-head {
+  padding: 0;
+}
+#material-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+#material-save-error:not(:empty) {
+  color: #a72e26;
+}
+.controls button[data-add-material] {
+  margin: 4px 0 12px;
+  font-size: 11px;
 }

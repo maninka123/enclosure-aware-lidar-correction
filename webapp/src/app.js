@@ -14,6 +14,14 @@ import {
   toPython,
 } from "./physics.js";
 import { materials, indexFor } from "./materials.js";
+import {
+  setupLibrary,
+  syncMedia,
+  librarySettings,
+  importMaterials,
+  populateMaterials,
+  restoreMedia,
+} from "./material-library.js";
 import { csvText, xyzPCD } from "./cloud.js";
 import { defaultObjects, validateObjects } from "./scene.js";
 import * as charts from "./plots.js";
@@ -147,6 +155,7 @@ function applyConfig(c) {
       180) /
     Math.PI;
   $("material").value = "custom";
+  syncMedia();
   materialNote();
   config = c;
 }
@@ -163,13 +172,23 @@ function materialNote() {
     $("material-note").append(a);
   }
   $("nwall").readOnly = key !== "custom";
-  $("wavelength").disabled = key !== "bk7";
+  $("wavelength").disabled = ![
+    key,
+    $("inside-material").value,
+    $("outside-material").value,
+  ].includes("bk7");
 }
 function materialSettings() {
-  return { preset: $("material").value, wavelength_nm: val("wavelength") };
+  return {
+    preset: $("material").value,
+    wavelength_nm: val("wavelength"),
+    ...librarySettings(),
+  };
 }
 function restoreMaterial(settings) {
   if (!settings) return;
+  importMaterials(settings.library);
+  populateMaterials();
   if (
     !Object.hasOwn(materials, settings.preset) ||
     !Number.isFinite(settings.wavelength_nm)
@@ -177,6 +196,7 @@ function restoreMaterial(settings) {
     throw Error("Invalid material settings in scene.");
   $("material").value = settings.preset;
   $("wavelength").value = settings.wavelength_nm;
+  restoreMedia(settings);
   materialNote();
 }
 function updateMaterial() {
@@ -259,10 +279,12 @@ async function render() {
         ],
         ["Wall index", fmt(config.nWall, 6), "n"],
       ]);
-      $("designer-section-title").textContent = `${a} beam projection`;
+      $("designer-section-title").textContent = `${a} ray path`;
+      $("designer-section-b-title").textContent = `${b} ray path`;
       await Promise.all([
         charts.geometry("geometry", config, ray, length),
         charts.beam2d("designer-section", config, ray, length, a),
+        charts.beam2d("designer-section-b", config, ray, length, b),
       ]);
       const range = Number($("sweep-range").value),
         frame = $("sweep-frame").value;
@@ -379,7 +401,14 @@ document.querySelector(".tabs").addEventListener("keydown", (e) => {
 document
   .querySelectorAll(".controls input:not([type=file]),.controls select")
   .forEach((el) => {
-    if (!["material", "wavelength"].includes(el.id))
+    if (
+      ![
+        "material",
+        "wavelength",
+        "inside-material",
+        "outside-material",
+      ].includes(el.id)
+    )
       el.addEventListener("input", changed);
   });
 ["plane-a", "plane-b", "sweep-range", "sweep-frame"].forEach((id) =>
@@ -1178,15 +1207,26 @@ function materialTable() {
     a.textContent = m.name;
     b.textContent = m.note;
     link.textContent = "Manufacturer data ↗";
-    link.href = m.url;
+    if (m.url) link.href = m.url;
     link.target = "_blank";
     link.rel = "noopener";
-    c.append(link);
+    if (m.url) {
+      link.textContent = "Source";
+      c.append(link);
+    } else
+      c.textContent = key.startsWith("user_")
+        ? "User supplied"
+        : "Reference assumption";
     tr.append(a, b, c);
     table.append(tr);
   }
-  $("material-table").append(table);
+  $("material-table").replaceChildren(table);
 }
+setupLibrary(() => {
+  materialTable();
+  materialNote();
+  changed();
+});
 materialNote();
 materialTable();
 rangeNote();

@@ -110,3 +110,40 @@ test("mobile navigation and invalid geometry", async ({ page }) => {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/mobile.png", fullPage: true });
 });
+
+test("named material library persists and travels with scenes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator("#outside-material").selectOption("water");
+  await expect(page.locator("#noutside")).toHaveValue("1.333");
+  await expect(page.locator("#noutside")).toHaveAttribute("readonly", "");
+  await page.locator('[data-add-material="material"]').click();
+  await page.locator("#new-material-name").fill("Measured dome 905 nm");
+  await page.locator("#new-material-index").fill("1.54321");
+  await page.locator("#new-material-note").fill("Measured at 23 C");
+  await page.getByRole("button", { name: "Save and use material" }).click();
+  await expect(page.locator("#material-dialog")).not.toBeVisible();
+  await expect(page.locator("#nwall")).toHaveValue("1.543210000");
+  const key = await page.locator("#material").inputValue();
+  await page.locator("#inside-material").selectOption(key);
+  await expect(page.locator("#ninside")).toHaveValue("1.54321");
+  await page.reload();
+  await page.locator("#material").selectOption(key);
+  await expect(page.locator("#nwall")).toHaveValue("1.543210000");
+  await page.getByRole("tab", { name: /Scene lab/ }).click();
+  await page.locator("#material").selectOption(key);
+  const saved = page.waitForEvent("download");
+  await page.locator("#save-scene").click();
+  const sceneFile = await readFile(await (await saved).path());
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.locator("#load-scene").setInputFiles({
+    name: "scene.json",
+    mimeType: "application/json",
+    buffer: sceneFile,
+  });
+  await expect(page.locator("#material")).toHaveValue(key);
+  await expect(page.locator("#nwall")).toHaveValue("1.54321");
+  await expect(page.locator("#error")).toBeHidden();
+});
