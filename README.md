@@ -4,7 +4,7 @@
 [![Cite this work](https://img.shields.io/badge/Cite-this%20work-green)](#citation)
 [![Open web app](https://img.shields.io/badge/Web_app-Enclosure_Lab-087f83)](https://maninka123.github.io/enclosure-aware-lidar-correction/)
 
-A standalone Python implementation of the two-interface spherical-dome method in the original MATLAB and `Python duplication` experiments. It extends the existing 2D vector ray trace to 3D, with reproducible experiments and a point-cloud correction command.
+A standalone Python and browser implementation of two spherical-enclosure correction paths: analytical two-interface ray tracing and a dynamically generated angular lookup table (LUT) with bilinear interpolation. It extends the original 2D experiments to 3D, reproducible synthetic scenes, and attribute-preserving point-cloud correction.
 
 This repository accompanies the enclosure-refraction topic in [Ranasinghe et al. (2026), *Correcting time offsets and enclosure-induced measurement distortions in LiDAR–camera systems*](https://doi.org/10.1016/j.measurement.2026.122285), published in **Measurement, Volume 285, Article 122285**.
 
@@ -14,7 +14,7 @@ This repository accompanies the enclosure-refraction topic in [Ranasinghe et al.
 
 **[Launch Enclosure Lab →](https://maninka123.github.io/enclosure-aware-lidar-correction/)**
 
-Design a dome, position and rotate the LiDAR, inspect 2D/3D beam paths, and explore XY/XZ/YZ deflection curves. Separate tabs provide a 3D deviation map, local CSV/PCD correction, and a scene builder with sensor stations. Equations and assumptions are available from the header dialog. Configurations, plots, point clouds and reports can be downloaded.
+Design a dome, position and rotate the LiDAR, inspect compact positive-Z ray projections, and explore XY/XZ/YZ deflection curves. Point Clouds and Scene Lab compare analytical and LUT correction, measured runtimes, validation maps, and method differences. Equations and assumptions are available from the header dialog. Configurations, LUTs, plots, point clouds and reports can be downloaded.
 
 The app runs entirely in your browser. Uploaded clouds stay on your device. See the [web app guide](webapp/README.md) for supported formats, material sources, scene assumptions and local development.
 
@@ -69,17 +69,27 @@ Choose the range model explicitly:
 
 Output XYZ uses the input's units and sensor frame. Invalid rows retain their positions in the table, receive NaN XYZ, and appear in a `.status.csv` sidecar. A `.report.json` records the settings and status counts. The input is never modified. Ray calculations are chunked; file parsing currently loads the complete cloud in memory.
 
+For paper-style angular LUT correction, generate a table from the same enclosure configuration and apply it while preserving each measured radius:
+
+```powershell
+dome-correct generate-lut --config configs/baseline.json --resolution-deg 0.1 --output outputs/baseline_lut
+dome-correct correct data/raw/scan.pcd --config configs/baseline.json --method lut --lut outputs/baseline_lut/lut.json --input-unit m --output outputs/scan_lut_corrected.pcd
+```
+
+The LUT stores sensor-frame exit direction vectors on an XZ/YZ angular grid and never extrapolates or interpolates through invalid neighbours. Its JSON contains geometry, indices, rotation, coordinate conventions, configuration hashes and validation metrics. See [LUT correction](docs/lut_correction.md).
+
 ## Python API
 
 ```python
 import numpy as np
-from dome_correction import Dome, trace_rays, correct_points
+from dome_correction import Dome, LUTSettings, generate_lut, correct_points_lut
 
 dome = Dome(inner_radius_m=0.074, thickness_m=0.004)
-trace = trace_rays(np.array([[0., 0., 1.]]), (-0.02, 0., 0.02445), dome)
-result = correct_points(np.array([[0., 0., 5.]]), dome,
-                        origin_m=(-0.02, 0., 0.02445),
-                        range_model="direction_only")
+settings = LUTSettings(resolution_deg=0.25, xz_min_deg=-35, xz_max_deg=35,
+                       yz_min_deg=-35, yz_max_deg=35)
+lut = generate_lut(dome, origin_m=(-0.02, 0., 0.02445), settings=settings)
+result = correct_points_lut(np.array([[0., 0., 5.]]), lut, dome=dome,
+                            origin_m=(-0.02, 0., 0.02445))
 ```
 
 All internal distances are metres. Rotation maps sensor vectors into enclosure coordinates. The dome's upper hemisphere is defined by `z >= center_z`. See [the model](docs/model.md) and [real-data validation plan](docs/real_pointclouds.md).
@@ -97,9 +107,9 @@ outputs/              generated runs (ignored by Git)
 .github/workflows/    installation, tests and experiment smoke run
 ```
 
-Tests verify spherical intersections, Snell's law, centered and homogeneous limits, transformed-frame reconstruction, invalid rays, total internal reflection and attribute preservation. Synthetic reconstruction is a model-consistency check, not evidence of measured accuracy. No external COMSOL results or claims of outperforming other methods are included.
+Tests verify spherical intersections, Snell's law, centered and homogeneous limits, transformed-frame reconstruction, LUT nodes and interpolation, cache invalidation, Python/JavaScript parity, invalid rays, total internal reflection and attribute preservation. Synthetic reconstruction is a model-consistency check, not evidence of measured accuracy. No external COMSOL results or claims of one method outperforming the other are included.
 
-Generated data, environment files, and private captures are ignored by Git. No third-party repository or paper PDF is bundled. A software license has not yet been selected; the paper's license does not automatically apply to this code.
+Generated data, environment files, and private captures are ignored by Git. No third-party repository or paper PDF is bundled.
 
 ## Citation
 

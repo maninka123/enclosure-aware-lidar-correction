@@ -10,6 +10,7 @@ import {
   norm,
   angle,
 } from "./physics.js";
+import { anglesToDirection } from "./lut.js";
 
 export const colors = {
   teal: "#087f83",
@@ -35,6 +36,8 @@ export const camera = (id, direction) =>
   import("./rendering.js").then((r) => r.camera(id, direction));
 export const onPick = (id, handler) =>
   import("./rendering.js").then((r) => r.onPick(id, handler));
+export const linkCameras = (first, second) =>
+  import("./rendering.js").then((r) => r.linkCameras(first, second));
 export function line3(points, name, color, width = 4, dash) {
   return {
     type: "scatter3d",
@@ -294,10 +297,10 @@ export function beam2d(id, c, t, length, plane) {
       c.center[a] * 1000 + inspectionHalfSpan,
     ],
     inspectionY =
-      c.upperOnly && plane !== "XY"
+      plane !== "XY"
         ? [
-            c.center[b] * 1000 - inspectionPadding,
-            c.center[b] * 1000 + inspectionHalfSpan,
+            Math.max(0, c.center[b] * 1000),
+            Math.max(0, c.center[b] * 1000 + inspectionHalfSpan),
           ]
         : [
             c.center[b] * 1000 - inspectionHalfSpan,
@@ -490,6 +493,135 @@ export function histogram(id, values, title = "Displacement (mm)") {
       yaxis: { title: { text: "Preview point count" } },
     },
   );
+}
+export function seriesPlot(id, x, rows, xTitle, yTitle) {
+  const data = rows
+    .filter((row) => row.values?.length)
+    .map((row) => ({
+      x: row.x || x,
+      y: row.values,
+      type: "scatter",
+      mode: "markers",
+      name: row.name,
+      marker: { color: row.color, size: row.size || 4 },
+    }));
+  return plot(id, data, {
+    xaxis: { title: { text: xTitle } },
+    yaxis: { title: { text: yTitle }, rangemode: "tozero" },
+    showlegend: data.length > 1,
+  });
+}
+const rowsFromFlat = (values, width, height) =>
+  Array.from({ length: height }, (_, row) =>
+    Array.from({ length: width }, (_, column) => values[row * width + column]),
+  );
+export function drawLUT(lut) {
+  const width = lut.xz.length,
+    height = lut.yz.length,
+    total = new Float64Array(lut.valid.length),
+    heat = (
+      id,
+      x,
+      y,
+      values,
+      title,
+      w = width,
+      h = height,
+      meta = null,
+      hover = null,
+    ) =>
+      plot(
+        id,
+        [
+          {
+            type: "heatmap",
+            x,
+            y,
+            z: rowsFromFlat(values, w, h),
+            meta,
+            hover,
+            colorscale,
+            colorbar: { title: { text: title } },
+          },
+        ],
+        {
+          xaxis: { title: { text: "XZ input · atan2(X,Z) (deg)" } },
+          yaxis: { title: { text: "YZ input · atan2(Y,Z) (deg)" } },
+        },
+      );
+  total.fill(NaN);
+  for (let j = 0; j < height; j++)
+    for (let i = 0; i < width; i++) {
+      const k = j * width + i,
+        incident = anglesToDirection(lut.xz[i], lut.yz[j]);
+      if (lut.valid[k] && incident)
+        total[k] = angle(
+          incident,
+          Array.from(lut.exit.slice(k * 3, k * 3 + 3)),
+        );
+    }
+  const meta = Array.from({ length: height }, (_, j) =>
+    Array.from({ length: width }, (_, i) => {
+      const k = j * width + i;
+      return {
+        dx: lut.deltaXZ[k],
+        dy: lut.deltaYZ[k],
+        total: total[k],
+        status: lut.valid[k] ? "ok" : "invalid",
+      };
+    }),
+  );
+  const hover = (xz, yz, _value, item) =>
+    `XZ input ${xz}°\nYZ input ${yz}°\nΔ XZ ${item.dx.toFixed(6)}°\nΔ YZ ${item.dy.toFixed(6)}°\nTotal ${item.total.toFixed(6)}°\nStatus ${item.status}`;
+  const cx = lut.xz.slice(0, -1).map((value, i) => (value + lut.xz[i + 1]) / 2),
+    cy = lut.yz.slice(0, -1).map((value, i) => (value + lut.yz[i + 1]) / 2);
+  return Promise.all([
+    heat(
+      "lut-dx",
+      lut.xz,
+      lut.yz,
+      lut.deltaXZ,
+      "Δ XZ °",
+      width,
+      height,
+      meta,
+      hover,
+    ),
+    heat(
+      "lut-dy",
+      lut.xz,
+      lut.yz,
+      lut.deltaYZ,
+      "Δ YZ °",
+      width,
+      height,
+      meta,
+      hover,
+    ),
+    heat(
+      "lut-total",
+      lut.xz,
+      lut.yz,
+      total,
+      "Total °",
+      width,
+      height,
+      meta,
+      hover,
+    ),
+    heat(
+      "lut-validation",
+      cx,
+      cy,
+      lut.validationError || new Float64Array(cx.length * cy.length).fill(NaN),
+      "Error °",
+      cx.length,
+      cy.length,
+      null,
+      (xz, yz, value) =>
+        `XZ input ${xz}°\nYZ input ${yz}°\nInterpolation error ${value.toFixed(7)}°`,
+    ),
+  ]);
 }
 export function objectMesh(obj) {
   const q = rotation(...obj.rpy),

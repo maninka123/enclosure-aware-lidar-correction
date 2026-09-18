@@ -1,0 +1,10 @@
+{
+  "name": "Enclosure Lab",
+  "short_name": "Enclosure Lab",
+  "description": "Spherical-enclosure LiDAR correction workspace",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f7f8",
+  "theme_color": "#087f83",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

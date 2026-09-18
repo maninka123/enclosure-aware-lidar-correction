@@ -6,10 +6,12 @@ import {
   trace,
   planeDirection,
   correct,
+  angle,
   norm,
   sub,
   rotation,
   mv,
+  mul,
   transpose,
   toPython,
   fromPython,
@@ -22,6 +24,17 @@ import {
   intersect,
   correctCollectedCloud,
 } from "../src/scene.js";
+import {
+  anglesToDirection,
+  correctPointLUT,
+  defaultLUTSettings,
+  deserializeLUT,
+  directionToAngles,
+  generateLUT,
+  lookupDirection,
+  serializeLUT,
+  validateLUTSettings,
+} from "../src/lut.js";
 test("matches original Python 2D trace", () => {
   const c = baseline(),
     r = trace(planeDirection(90, "XZ"), c);
@@ -155,5 +168,111 @@ test("3D dome centre and sensor source retain independent coordinates", async ()
   assert.deepEqual(
     xyz("Sensor X"),
     c.origin.map((v) => v * 1000),
+  );
+});
+
+test("LUT angle convention round-trips valid quadrants", () => {
+  for (const direction of [
+    [1, 2, 3],
+    [-1, 2, 3],
+    [-1, -2, 3],
+    [1, -2, 3],
+    [1, 2, -3],
+    [-1, -2, -3],
+  ]) {
+    const restored = anglesToDirection(...directionToAngles(direction));
+    assert.ok(angle(restored, direction) < 1e-12);
+  }
+});
+
+test("LUT nodes, bilinear lookup, radius preservation and invalid domain", async () => {
+  const c = baseline(),
+    settings = {
+      ...defaultLUTSettings(),
+      resolution_deg: 5,
+      xz_min_deg: -30,
+      xz_max_deg: 30,
+      yz_min_deg: -30,
+      yz_max_deg: 30,
+    },
+    lut = await generateLUT(c, settings);
+  const node = anglesToDirection(10, -5),
+    analytical = trace(mv(c.rotation, node), c),
+    found = lookupDirection(node, lut);
+  assert.equal(found.valid, true);
+  assert.ok(
+    angle(found.direction, mv(transpose(c.rotation), analytical.exit)) < 1e-10,
+  );
+  const raw = mul(anglesToDirection(3.2, -7.4), 4.2),
+    corrected = correctPointLUT(raw, lut);
+  assert.equal(corrected.valid, true);
+  assert.ok(Math.abs(norm(corrected.point) - norm(raw)) < 1e-12);
+  assert.equal(
+    lookupDirection(anglesToDirection(31, 0), lut).status,
+    "outside_lut_domain",
+  );
+  lut.valid[0] = 0;
+  assert.equal(
+    lookupDirection(anglesToDirection(-29, -29), lut).status,
+    "invalid_interpolation_neighbours",
+  );
+});
+
+test("LUT import checks configuration and cache signature", async () => {
+  const c = baseline(),
+    lut = await generateLUT(c, {
+      ...defaultLUTSettings(),
+      resolution_deg: 10,
+      xz_min_deg: -20,
+      xz_max_deg: 20,
+      yz_min_deg: -20,
+      yz_max_deg: 20,
+    }),
+    data = serializeLUT(lut),
+    restored = await deserializeLUT(data, c);
+  assert.equal(restored.lutHash, lut.lutHash);
+  await assert.rejects(
+    deserializeLUT(data, { ...c, thickness: 0.006 }),
+    /incompatible/,
+  );
+  assert.throws(
+    () => validateLUTSettings({ ...data.settings, xz_max_deg: 21 }),
+    /divisible/,
+  );
+});
+
+test("Scene LUT converges toward analytical direction correction", async () => {
+  const c = baseline(),
+    settings = {
+      ...defaultLUTSettings(),
+      xz_min_deg: -25,
+      xz_max_deg: 25,
+      yz_min_deg: -25,
+      yz_max_deg: 25,
+    },
+    coarse = await generateLUT(c, { ...settings, resolution_deg: 5 }),
+    fine = await generateLUT(c, { ...settings, resolution_deg: 1 }),
+    pose = { position: [0, 0, 0], rpy: [0, 0, 0] },
+    coarseScene = simulate(
+      c,
+      defaultObjects(),
+      pose,
+      25,
+      40,
+      "direction_only",
+      coarse,
+    ),
+    fineScene = simulate(
+      c,
+      defaultObjects(),
+      pose,
+      25,
+      40,
+      "direction_only",
+      fine,
+    );
+  assert.ok(
+    fineScene.metrics.method_difference.rms <
+      coarseScene.metrics.method_difference.rms,
   );
 });

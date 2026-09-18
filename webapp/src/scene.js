@@ -4,6 +4,7 @@ import {
   mul,
   dot,
   norm,
+  angle,
   unit,
   mv,
   transpose,
@@ -12,6 +13,7 @@ import {
   correct,
   validate,
 } from "./physics.js";
+import { correctPointLUT, summary } from "./lut.js";
 export const defaultObjects = () => [
   {
     name: "Back wall",
@@ -113,6 +115,7 @@ export function simulate(
   resolution = 65,
   fov = 65,
   mode = "optical_path",
+  lut = null,
 ) {
   validate(c);
   validateObjects(objects);
@@ -141,6 +144,20 @@ export function simulate(
     corrected: [],
     rawLocal: [],
     correctedLocal: [],
+    analytical: [],
+    analyticalLocal: [],
+    lut: [],
+    lutLocal: [],
+    lutTruth: [],
+    lutAnalytical: [],
+    lutStatus: [],
+    lutError: [],
+    methodDifference: [],
+    lutAngularError: [],
+    lutRanges: [],
+    lutIncidentAngles: [],
+    ranges: [],
+    incidentAngles: [],
     error: [],
     rawError: [],
     displacement: [],
@@ -188,11 +205,13 @@ export function simulate(
   // Correct the collected enclosure-affected sensor cloud as a separate step.
   // Synthetic scene hits are absent from this input and are used only below to
   // evaluate the reconstructed cloud.
+  const analyticalTimeStarted = performance.now();
   const corrections = correctCollectedCloud(
     measurements.map((measurement) => measurement.raw),
     c,
     mode,
   );
+  result.analyticalTimeMs = performance.now() - analyticalTimeStarted;
   measurements.forEach((measurement, index) => {
     const corrected = corrections[index];
     if (!corrected.valid) {
@@ -206,8 +225,10 @@ export function simulate(
     result.truth.push(measurement.truth);
     result.raw.push(measurement.rawWorld);
     result.corrected.push(correctedWorld);
+    result.analytical.push(correctedWorld);
     result.rawLocal.push(measurement.raw);
     result.correctedLocal.push(corrected.point);
+    result.analyticalLocal.push(corrected.point);
     result.error.push(norm(sub(correctedWorld, measurement.truth)) * 1000);
     result.rawError.push(
       norm(sub(measurement.rawWorld, measurement.truth)) * 1000,
@@ -216,6 +237,51 @@ export function simulate(
       norm(sub(correctedWorld, measurement.rawWorld)) * 1000,
     );
     result.object.push(measurement.object);
+    result.ranges.push(norm(measurement.raw));
+    result.incidentAngles.push(angle(measurement.raw, [0, 0, 1]));
   });
+  if (lut) {
+    const started = performance.now();
+    result.rawLocal.forEach((raw, index) => {
+      const corrected = correctPointLUT(raw, lut),
+        directionReference = correct(raw, c, "direction_only", c.nInside);
+      result.lutStatus.push(corrected.status);
+      if (!corrected.valid) return;
+      const correctedWorld = add(
+        origin,
+        mv(world, mv(c.rotation, corrected.point)),
+      );
+      result.lut.push(correctedWorld);
+      result.lutLocal.push(corrected.point);
+      result.lutTruth.push(result.truth[index]);
+      result.lutAnalytical.push(result.analytical[index]);
+      result.lutRanges.push(result.ranges[index]);
+      result.lutIncidentAngles.push(result.incidentAngles[index]);
+      result.lutError.push(
+        norm(sub(correctedWorld, result.truth[index])) * 1000,
+      );
+      result.methodDifference.push(
+        norm(sub(correctedWorld, result.analytical[index])) * 1000,
+      );
+      if (directionReference.valid)
+        result.lutAngularError.push(
+          angle(corrected.point, directionReference.point),
+        );
+    });
+    result.lutTimeMs = performance.now() - started;
+    result.lutRejected = result.lutStatus.filter(
+      (status) => status !== "ok",
+    ).length;
+  } else {
+    result.lutTimeMs = null;
+    result.lutRejected = null;
+  }
+  result.metrics = {
+    raw: summary(result.rawError),
+    analytical: summary(result.error),
+    lut: summary(result.lutError),
+    method_difference: summary(result.methodDifference),
+    lut_angular_interpolation: summary(result.lutAngularError),
+  };
   return result;
 }

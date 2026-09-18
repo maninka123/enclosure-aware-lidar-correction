@@ -52,10 +52,10 @@ test("cloud correction, downloads and stale result protection", async ({
   });
   await expect(page.locator("#correct-cloud")).toBeEnabled();
   await page.locator("#correct-cloud").click();
-  await expect(page.locator("#cloud-status")).toContainText("2 / 3 valid");
+  await expect(page.locator("#cloud-status")).toContainText("2 analytical");
   const download = page.waitForEvent("download");
   await page.locator("#export-pcd").click();
-  expect((await download).suggestedFilename()).toBe("corrected.pcd");
+  expect((await download).suggestedFilename()).toBe("analytical-corrected.pcd");
   await page.locator("#thickness").fill("6");
   await expect(page.locator("#export-pcd")).toBeDisabled();
   await page.locator("#cloud-mode").selectOption("optical_path");
@@ -152,7 +152,7 @@ test("named material library persists and travels with scenes", async ({
   await page.locator("#outside-material").selectOption("water");
   await expect(page.locator("#noutside")).toHaveValue("1.333");
   await expect(page.locator("#noutside")).toHaveAttribute("readonly", "");
-  await page.locator('[data-add-material="material"]').click();
+  await page.locator("#material").selectOption("__add__");
   await page.locator("#new-material-name").fill("Measured dome 905 nm");
   await page.locator("#new-material-index").fill("1.54321");
   await page.locator("#new-material-note").fill("Measured at 23 C");
@@ -216,7 +216,7 @@ test("new renderers preserve view controls, picking, aspect and PNG export", asy
   );
   expect(bounds.x[0]).toBeCloseTo(-128, 5);
   expect(bounds.x[1]).toBeCloseTo(128, 5);
-  expect(bounds.y[0]).toBeCloseTo(-50, 5);
+  expect(bounds.y[0]).toBeCloseTo(0, 5);
   expect(bounds.y[1]).toBeCloseTo(128, 5);
   const frame = JSON.parse(
     await page.locator("#designer-section").getAttribute("data-frame"),
@@ -288,5 +288,84 @@ test("new renderers preserve view controls, picking, aspect and PNG export", asy
   }
   expect(picked).toBe(true);
   expect(await page.locator("#world-z").inputValue()).not.toBe("0");
+  expect(errors).toEqual([]);
+});
+
+test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/#cloud");
+  await page.locator("#cloud-method").selectOption("compare");
+  await expect(page.locator("#lut-panel")).toBeVisible();
+  await page.locator("#lut-resolution").selectOption("0.5");
+  for (const [id, value] of [
+    ["lut-xz-min", "-35"],
+    ["lut-xz-max", "35"],
+    ["lut-yz-min", "-35"],
+    ["lut-yz-max", "35"],
+  ])
+    await page.locator(`#${id}`).fill(value);
+  await page.locator("#generate-lut").click();
+  await expect(page.locator("#lut-status")).toContainText("LUT ready", {
+    timeout: 30000,
+  });
+  await expect(page.locator("#lut-total canvas").first()).toBeVisible();
+  await page.locator("#cloud-file").setInputFiles({
+    name: "raw.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("x,y,z,intensity\n0,0,5,42\n.5,.25,5,17\n"),
+  });
+  await page.locator("#correct-cloud").click();
+  await expect(page.locator("#cloud-status")).toContainText(
+    "2 analytical and 2 LUT",
+    { timeout: 30000 },
+  );
+  await expect(page.locator("#cloud-stats")).toContainText(
+    "Mean method difference",
+  );
+  await expect(
+    page.locator("#cloud-method-range canvas").first(),
+  ).toBeVisible();
+  await page.locator("#cloud-view").selectOption("side");
+  await expect(page.locator("#cloud3d-b")).toBeVisible();
+  const cloudBox = await page.locator("#cloud3d canvas").boundingBox();
+  await page.mouse.move(
+    cloudBox.x + cloudBox.width / 2,
+    cloudBox.y + cloudBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    cloudBox.x + cloudBox.width * 0.62,
+    cloudBox.y + cloudBox.height * 0.42,
+    { steps: 6 },
+  );
+  await page.mouse.up();
+  await expect
+    .poll(async () => page.locator("#cloud3d-b").getAttribute("data-camera"))
+    .toBe(await page.locator("#cloud3d").getAttribute("data-camera"));
+  await page.screenshot({ path: "test-results/lut-cloud.png", fullPage: true });
+  const lutDownload = page.waitForEvent("download");
+  await page.locator("#export-lut").click();
+  expect((await lutDownload).suggestedFilename()).toBe(
+    "enclosure-angular-lut.json",
+  );
+  await page.getByRole("tab", { name: /Scene lab/ }).click();
+  await page.locator("#scene-auto").uncheck();
+  await page.locator("#scene-correction-method").selectOption("compare");
+  await page.locator("#simulate").click();
+  await expect(page.locator("#scene-status")).toContainText("returns", {
+    timeout: 30000,
+  });
+  await expect(page.locator("#scene-stats")).toContainText("LUT 3D RMSE");
+  await expect(
+    page.locator("#scene-method-difference canvas").first(),
+  ).toBeVisible();
+  await page.locator("#thickness").fill("6");
+  await expect(page.locator("#scene-lut-status")).toContainText("stale", {
+    timeout: 10000,
+  });
   expect(errors).toEqual([]);
 });

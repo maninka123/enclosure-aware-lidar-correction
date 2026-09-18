@@ -1,7 +1,8 @@
 import { mkdir, copyFile, cp, writeFile, unlink } from "node:fs/promises";
 import { build } from "esbuild";
 await mkdir("dist/vendor", { recursive: true });
-for (const f of ["index.html", "style.css"]) await copyFile(f, `dist/${f}`);
+for (const f of ["index.html", "style.css", "icon.svg", "manifest.webmanifest"])
+  await copyFile(f, `dist/${f}`);
 await cp("src", "dist/src", { recursive: true });
 await build({
   entryPoints: ["src/app.js"],

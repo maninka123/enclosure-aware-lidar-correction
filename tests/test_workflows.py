@@ -46,6 +46,31 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(exc.exception.code, 2)
             self.assertEqual(output.read_bytes(), before)
 
+    def test_cli_generate_and_apply_lut_preserves_attributes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config, raw = root/'config.json', root/'raw.csv'
+            data = config_dict(Dome(), [0, 0, 0], np.eye(3))
+            data['lut'] = dict(resolution_deg=10, xz_min_deg=-20,
+                               xz_max_deg=20, yz_min_deg=-20,
+                               yz_max_deg=20, interpolation='bilinear')
+            config.write_text(json.dumps(data))
+            raw.write_text('x,y,z,label\n0,0,5,centre\n.1,0,5,edge\n')
+            lut_dir, output = root/'lut', root/'corrected.csv'
+            with contextlib.redirect_stdout(io.StringIO()):
+                main(['generate-lut', '--config', str(config),
+                      '--resolution-deg', '10', '--output', str(lut_dir)])
+                main(['correct', str(raw), '--config', str(config),
+                      '--method', 'lut', '--lut', str(lut_dir/'lut.json'),
+                      '--input-unit', 'm', '--output', str(output)])
+            result = read_cloud(output)
+            self.assertEqual([row[3] for row in result.rows], ['centre', 'edge'])
+            np.testing.assert_allclose(np.linalg.norm(result.points, axis=1),
+                                       np.linalg.norm([[0, 0, 5], [.1, 0, 5]], axis=1))
+            report = json.loads(output.with_suffix('.csv.report.json').read_text())
+            self.assertEqual(report['method'], 'lut')
+            self.assertEqual(report['range_model'], 'preserve_measured_radius')
+
     def test_experiments_report_invalid_perturbations(self):
         from dome_correction.experiments import run_experiments
         with tempfile.TemporaryDirectory() as tmp:

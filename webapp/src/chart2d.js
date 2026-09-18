@@ -67,7 +67,8 @@ export class Chart2D {
         const cells = [];
         d.y.forEach((_, y) =>
           d.x.forEach((_, x) => {
-            if (finite(d.z[y][x])) cells.push([x, y, d.z[y][x]]);
+            if (finite(d.z[y][x]))
+              cells.push([x, y, d.z[y][x], d.meta?.[y]?.[x]]);
           }),
         );
         series.push({
@@ -272,7 +273,11 @@ export class Chart2D {
         ...axis(layout.xaxis?.title?.text),
         type: "category",
         data: heat.x,
-        axisLabel: { color: "#657580", interval: 11 },
+        axisLabel: {
+          color: "#657580",
+          interval: Math.max(0, Math.ceil(heat.x.length / 7) - 1),
+          formatter: (value) => Number(Number(value).toPrecision(4)).toString(),
+        },
         splitLine: { show: false },
       };
       option.yAxis = {
@@ -280,7 +285,11 @@ export class Chart2D {
         type: "category",
         data: heat.y,
         inverse: true,
-        axisLabel: { color: "#657580", interval: 5 },
+        axisLabel: {
+          color: "#657580",
+          interval: Math.max(0, Math.ceil(heat.y.length / 7) - 1),
+          formatter: (value) => Number(Number(value).toPrecision(4)).toString(),
+        },
         splitLine: { show: false },
       };
       option.visualMap = {
@@ -297,7 +306,14 @@ export class Chart2D {
         textStyle: { color: "#657580" },
       };
       option.tooltip.formatter = (p) =>
-        `Azimuth ${heat.x[p.value[0]]}\u00b0\nPolar ${heat.y[p.value[1]]}\u00b0\nDeviation ${p.value[2].toFixed(5)}\u00b0`;
+        heat.hover
+          ? heat.hover(
+              heat.x[p.value[0]],
+              heat.y[p.value[1]],
+              p.value[2],
+              p.value[3],
+            )
+          : `X ${heat.x[p.value[0]]}\u00b0\nY ${heat.y[p.value[1]]}\u00b0\nValue ${p.value[2].toFixed(5)}\u00b0`;
     }
     if (this.zoom)
       option.dataZoom.forEach((z, i) => Object.assign(z, this.zoom[i]));

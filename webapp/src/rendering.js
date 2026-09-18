@@ -35,6 +35,14 @@ export function onPick(id, handler) {
   const v = views.get(id);
   if (v) v.onPick = handler;
 }
+export function linkCameras(first, second) {
+  const a = views.get(first),
+    b = views.get(second);
+  if (!a?.three || !b?.three) return;
+  a.onCameraChange = (source) => b.syncCamera(source);
+  b.onCameraChange = (source) => a.syncCamera(source);
+  b.syncCamera(a);
+}
 export function saveImage(url, name) {
   const a = document.createElement("a");
   a.href = url;

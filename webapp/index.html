@@ -8,13 +8,39 @@
       content="Interactive spherical-dome LiDAR refraction, enclosure design and point-cloud correction."
     />
     <title>Enclosure Lab · LiDAR optics</title>
+    <meta name="theme-color" content="#087f83" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="style.css" />
     <script type="module" src="src/app.js"></script>
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="#designer"
-        ><span class="brand-icon">◉</span
+        ><svg class="brand-icon" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="15" fill="#f4fbfa" />
+          <path
+            d="M11 37a21 21 0 0 1 42 0"
+            fill="#d8efec"
+            stroke="#087f83"
+            stroke-width="4"
+            stroke-linecap="round"
+          />
+          <path
+            d="M15 37a17 17 0 0 1 34 0"
+            fill="none"
+            stroke="#76bdbb"
+            stroke-width="2"
+          />
+          <circle cx="25" cy="33" r="4" fill="#173f4e" />
+          <path
+            d="m25 33 13-17 11-7"
+            fill="none"
+            stroke="#e17658"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+          <circle cx="38" cy="16" r="2.5" fill="#d59a2a" /></svg
         ><span
           >Enclosure <b>Lab</b><small>LiDAR optics workspace</small></span
         ></a
@@ -150,9 +176,6 @@
               <option value="bk7">SCHOTT N-BK7 · dispersion</option>
             </select></label
           >
-          <button type="button" data-add-material="material">
-            + Add dome material
-          </button>
           <div class="pair">
             <label
               >Wavelength <em>nm</em
@@ -197,14 +220,6 @@
                 min=".1"
             /></label>
           </div>
-          <div class="pair">
-            <button type="button" data-add-material="inside-material">
-              + Add inside medium
-            </button>
-            <button type="button" data-add-material="outside-material">
-              + Add outside medium
-            </button>
-          </div>
           <p id="medium-note" class="micro"></p>
         </details>
         <details open>
@@ -236,39 +251,6 @@
             The sensor looks along its local +Z axis.
           </p>
         </details>
-        <details open>
-          <summary>Selected beam</summary>
-          <label
-            >Polar angle from sensor +Z <output id="polar-out">25°</output
-            ><input
-              id="polar"
-              type="range"
-              min="0"
-              max="180"
-              value="25"
-              step=".5"
-          /></label>
-          <label
-            >Azimuth about sensor +Z <output id="azimuth-out">0°</output
-            ><input
-              id="azimuth"
-              type="range"
-              min="0"
-              max="360"
-              value="0"
-              step="1"
-          /></label>
-          <label
-            >Display length after shell <em>mm</em
-            ><input
-              id="raylength"
-              type="number"
-              value="100"
-              min="1"
-              max="10000"
-              step="10"
-          /></label>
-        </details>
         <div class="button-pair">
           <button id="save-config" class="secondary">↓ Config JSON</button
           ><label class="file-button"
@@ -280,6 +262,54 @@
       <main>
         <div id="error" class="error" role="alert" hidden></div>
         <div id="notice" class="notice" role="status" hidden></div>
+        <section
+          id="beam-controls"
+          class="beam-control-strip"
+          aria-label="Selected beam controls"
+        >
+          <div>
+            <span class="eyebrow">SELECTED BEAM</span>
+            <strong>Adjust while viewing</strong>
+          </div>
+          <label
+            >Polar tilt from sensor +Z
+            <small>in the plane selected by azimuth</small>
+            <output id="polar-out">25°</output
+            ><input
+              id="polar"
+              type="range"
+              min="0"
+              max="180"
+              value="25"
+              step=".5"
+          /></label>
+          <label
+            >Azimuth in sensor XY
+            <small>from +X toward +Y about +Z</small>
+            <output id="azimuth-out">0°</output
+            ><input
+              id="azimuth"
+              type="range"
+              min="0"
+              max="360"
+              value="0"
+              step="1"
+          /></label>
+          <div class="beam-plane-readout">
+            <span>XZ · atan2(X,Z) <b id="beam-xz">—</b></span>
+            <span>YZ · atan2(Y,Z) <b id="beam-yz">—</b></span>
+          </div>
+          <label class="beam-length"
+            >Ray after shell <em>mm</em
+            ><input
+              id="raylength"
+              type="number"
+              value="100"
+              min="1"
+              max="10000"
+              step="10"
+          /></label>
+        </section>
         <section id="designer" role="tabpanel" aria-labelledby="tab-designer">
           <div class="page-heading">
             <div>
@@ -524,6 +554,12 @@
                 <option value=".001">Millimetres</option>
               </select></label
             ><label
+              >Correction method<select id="cloud-method">
+                <option value="analytical">Analytical</option>
+                <option value="lut">LUT</option>
+                <option value="compare">Compare both</option>
+              </select></label
+            ><label
               >Range model<select id="cloud-mode">
                 <option value="direction_only">
                   Direction only · preserve radius
@@ -542,6 +578,85 @@
               Apply correction →</button
             ><button id="cancel-cloud" class="quiet" hidden>Cancel</button>
           </div>
+          <article id="lut-panel" class="card lut-panel" hidden>
+            <div class="card-head">
+              <div>
+                <h2>Angular lookup table</h2>
+                <p>Generated from the current analytical enclosure model.</p>
+              </div>
+              <span id="lut-status" class="tag">LUT not generated</span>
+            </div>
+            <div class="lut-controls">
+              <label
+                >Resolution<select id="lut-resolution">
+                  <option value="0.5">0.5°</option>
+                  <option value="0.25">0.25°</option>
+                  <option value="0.1" selected>0.1°</option>
+                  <option value="0.05">0.05°</option>
+                </select></label
+              >
+              <label
+                >XZ minimum °<input
+                  id="lut-xz-min"
+                  type="number"
+                  value="-32.5"
+                  step="0.5"
+              /></label>
+              <label
+                >XZ maximum °<input
+                  id="lut-xz-max"
+                  type="number"
+                  value="32.5"
+                  step="0.5"
+              /></label>
+              <label
+                >YZ minimum °<input
+                  id="lut-yz-min"
+                  type="number"
+                  value="-32.5"
+                  step="0.5"
+              /></label>
+              <label
+                >YZ maximum °<input
+                  id="lut-yz-max"
+                  type="number"
+                  value="32.5"
+                  step="0.5"
+              /></label>
+              <button id="generate-lut" class="primary">Generate LUT</button>
+              <button id="cancel-lut" class="quiet" hidden>Cancel</button>
+            </div>
+            <progress id="lut-progress" max="1" value="0" hidden></progress>
+            <div id="lut-stats" class="stats"></div>
+            <div class="actions lut-files">
+              <button id="export-lut" class="secondary" disabled>
+                ↓ Export LUT JSON
+              </button>
+              <label class="file-button"
+                >↑ Import LUT<input id="import-lut" type="file" accept=".json"
+              /></label>
+            </div>
+            <div id="lut-views" class="grid two" hidden>
+              <article class="card">
+                <div class="card-head"><h3>Δ XZ angle</h3></div>
+                <div id="lut-dx" class="plot"></div>
+              </article>
+              <article class="card">
+                <div class="card-head"><h3>Δ YZ angle</h3></div>
+                <div id="lut-dy" class="plot"></div>
+              </article>
+              <article class="card">
+                <div class="card-head"><h3>Total angular deflection</h3></div>
+                <div id="lut-total" class="plot"></div>
+              </article>
+              <article class="card">
+                <div class="card-head">
+                  <h3>Interpolation validation error</h3>
+                </div>
+                <div id="lut-validation" class="plot"></div>
+              </article>
+            </div>
+          </article>
           <p id="range-note" class="footnote"></p>
           <progress id="cloud-progress" max="1" value="0" hidden></progress>
           <p id="cloud-status" class="notice">
@@ -551,22 +666,43 @@
           <div id="cloud-stats" class="stats"></div>
           <article class="card">
             <div class="card-head">
-              <h2>Raw / corrected overlay</h2>
+              <h2>Point-cloud comparison</h2>
               <div class="actions">
-                <label
-                  ><input type="checkbox" id="show-raw" checked /> Raw</label
-                ><label
-                  ><input type="checkbox" id="show-corrected" checked />
-                  Corrected</label
+                <select
+                  id="cloud-view"
+                  aria-label="Point-cloud comparison view"
+                >
+                  <option value="overlay">Analytical + LUT overlay</option>
+                  <option value="side">Analytical / LUT side by side</option>
+                  <option value="difference">Method difference map</option>
+                  <option value="raw">Raw</option>
+                  <option value="analytical">Analytical corrected</option>
+                  <option value="lut">LUT corrected</option>
+                  <option value="all">All</option></select
                 ><button data-expand="cloud3d">⛶ Expand</button>
               </div>
             </div>
-            <div id="cloud3d" class="plot large empty"></div>
+            <div class="cloud-view-grid">
+              <div id="cloud3d" class="plot large empty"></div>
+              <div id="cloud3d-b" class="plot large empty" hidden></div>
+            </div>
           </article>
           <div class="grid two">
             <article class="card">
-              <div class="card-head"><h2>Correction magnitude</h2></div>
-              <div id="cloud-hist" class="plot empty"></div>
+              <div class="card-head">
+                <h2>Correction magnitude vs range</h2>
+              </div>
+              <div id="cloud-correction-range" class="plot empty"></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h2>Method difference vs range</h2></div>
+              <div id="cloud-method-range" class="plot empty"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>LUT angular interpolation error</h2>
+              </div>
+              <div id="cloud-angular-error" class="plot empty"></div>
             </article>
             <article class="card info-card">
               <h2>Export your results</h2>
@@ -575,6 +711,12 @@
                 a surveyed reference. Preview uses up to 20,000 points; exports
                 retain every row.
               </p>
+              <label
+                >Correction to export<select id="cloud-export-layer">
+                  <option value="analytical">Analytical corrected</option>
+                  <option value="lut">LUT corrected</option>
+                </select></label
+              >
               <div class="button-pair">
                 <button id="export-pcd" class="secondary" disabled>
                   ↓ Corrected PCD</button
@@ -592,6 +734,10 @@
               </p>
             </article>
           </div>
+          <details class="diagnostics-card">
+            <summary>Optional displacement histogram</summary>
+            <div id="cloud-hist" class="plot empty"></div>
+          </details>
         </section>
         <section id="scene" role="tabpanel" aria-labelledby="tab-scene" hidden>
           <div class="page-heading">
@@ -759,7 +905,14 @@
                 /></label>
               </div>
               <label
-                >Reconstruction<select id="scene-mode">
+                >Correction method<select id="scene-correction-method">
+                  <option value="compare">Analytical + LUT</option>
+                  <option value="analytical" selected>Analytical only</option>
+                  <option value="lut">LUT only</option>
+                </select></label
+              >
+              <label
+                >Analytical range model<select id="scene-mode">
                   <option value="optical_path">
                     Full optical-path correction
                   </option>
@@ -770,7 +923,14 @@
                     Geometric-path assumption
                   </option>
                 </select></label
-              ><button id="simulate" class="primary full">
+              >
+              <div class="scene-lut-state">
+                <span id="scene-lut-status">LUT not generated</span>
+                <button id="scene-generate-lut" type="button">
+                  Generate LUT
+                </button>
+              </div>
+              <button id="simulate" class="primary full">
                 Simulate scene →</button
               ><label class="check"
                 ><input id="scene-auto" type="checkbox" checked /> Re-simulate
@@ -794,13 +954,18 @@
               <h2>Scene & reconstructed returns</h2>
               <div class="actions">
                 <select id="scene-layer" aria-label="Scene layer">
-                  <option value="comparison">Raw + corrected</option>
-                  <option value="all">All layers</option>
+                  <option value="comparison">Analytical + LUT</option>
                   <option value="bare">No enclosure</option>
                   <option value="raw">Collected with enclosure</option>
                   <option value="truth">Synthetic truth · evaluation</option>
-                  <option value="corrected">
-                    Corrected from collected cloud
+                  <option value="analytical">Analytical corrected</option>
+                  <option value="lut">LUT corrected</option>
+                  <option value="analytical-error">
+                    Analytical error colour
+                  </option>
+                  <option value="lut-error">LUT error colour</option>
+                  <option value="method-difference">
+                    LUT vs Analytical difference
                   </option></select
                 ><button data-expand="scene3d">⛶ Expand</button>
               </div>
@@ -809,8 +974,26 @@
           </article>
           <div class="grid two">
             <article class="card">
-              <div class="card-head"><h2>Synthetic evaluation error</h2></div>
+              <div class="card-head">
+                <h2>Error vs range · synthetic truth</h2>
+              </div>
               <div id="scene-errors" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h2>Error vs incident angle</h2></div>
+              <div id="scene-angle-errors" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>LUT vs Analytical endpoint difference</h2>
+              </div>
+              <div id="scene-method-difference" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>LUT interpolation angular error</h2>
+              </div>
+              <div id="scene-lut-angular" class="plot"></div>
             </article>
             <article class="card info-card">
               <h2>Save the experiment</h2>
@@ -819,10 +1002,16 @@
                   <option value="bare">No-enclosure world cloud</option>
                   <option value="raw">Raw world cloud</option>
                   <option value="truth">Refracted-hit truth (world)</option>
-                  <option value="corrected">Corrected world cloud</option>
+                  <option value="analytical">
+                    Analytical corrected world cloud
+                  </option>
+                  <option value="lut">LUT corrected world cloud</option>
                   <option value="rawLocal">Raw sensor-frame cloud</option>
-                  <option value="correctedLocal">
-                    Corrected sensor-frame cloud
+                  <option value="analyticalLocal">
+                    Analytical corrected sensor-frame cloud
+                  </option>
+                  <option value="lutLocal">
+                    LUT corrected sensor-frame cloud
                   </option>
                 </select></label
               >
@@ -984,8 +1173,9 @@
             >Read the paper ↗</a
           >
           <p>
-            This app extends the spherical ray model. It does not reproduce the
-            paper’s full calibration or lookup-table workflow. Scene results are
+            This app implements analytical spherical tracing and a dynamically
+            generated paper-style angular LUT. It does not reproduce the paper’s
+            temporal or camera-calibration workflow. Scene results are
             synthetic.
           </p>
         </article>

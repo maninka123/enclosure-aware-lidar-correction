@@ -13,6 +13,7 @@ import {
   fromPython,
   toPython,
 } from "./physics.js";
+import { directionToAngles } from "./lut.js";
 import { materials, indexFor } from "./materials.js";
 import {
   setupLibrary,
@@ -44,7 +45,11 @@ let active = "designer",
   objects = defaultObjects(),
   renderTimer,
   sceneTimer,
-  cloudBusy = false;
+  cloudBusy = false,
+  currentLUT = null,
+  lutStale = false,
+  lutBusy = false,
+  lutCheckGeneration = 0;
 const numericIds = [
   "radius",
   "thickness",
@@ -201,6 +206,7 @@ function restoreMaterial(settings) {
 }
 function updateMaterial() {
   try {
+    if ($("material").value === "__add__") return;
     const n = indexFor($("material").value, val("wavelength"));
     if (n !== undefined) $("nwall").value = n.toFixed(9);
     materialNote();
@@ -240,6 +246,7 @@ function changed() {
       config = readConfig();
       error("");
       render();
+      checkLUTCompatibility(config).catch((e) => error(e.message));
       if (active === "scene" && $("scene-auto").checked) queueScene();
     } catch (e) {
       error(e.message);
@@ -254,6 +261,11 @@ async function render() {
     $("live-state").textContent = "LIVE";
     $("polar-out").value = `${val("polar")}°`;
     $("azimuth-out").value = `${val("azimuth")}°`;
+    const selectedAngles = directionToAngles(
+      beamDirection(val("azimuth"), val("polar")),
+    );
+    $("beam-xz").textContent = `${fmt(selectedAngles[0], 2)}°`;
+    $("beam-yz").textContent = `${fmt(selectedAngles[1], 2)}°`;
     const length = val("raylength") / 1000;
     if (!Number.isFinite(length) || length <= 0)
       throw Error("Display ray length must be positive.");
@@ -370,6 +382,7 @@ async function tab(name) {
   )
     name = "designer";
   active = name;
+  $("beam-controls").hidden = !["designer", "beam"].includes(name);
   document
     .querySelectorAll("[role=tabpanel]")
     .forEach((el) => (el.hidden = el.id !== name));
@@ -416,6 +429,8 @@ document
     )
       el.addEventListener("input", changed);
   });
+for (const id of ["polar", "azimuth", "raylength"])
+  $(id).addEventListener("input", changed);
 ["plane-a", "plane-b", "sweep-range", "sweep-frame"].forEach((id) =>
   $(id).addEventListener("change", () => render()),
 );
@@ -437,7 +452,10 @@ $("pin").onclick = () => {
 };
 $("save-config").onclick = () => {
   try {
-    jsonDownload(toPython(readConfig()), "enclosure-config.json");
+    jsonDownload(
+      { ...toPython(readConfig()), lut: readLUTSettings() },
+      "enclosure-config.json",
+    );
   } catch (e) {
     error(e.message);
   }
@@ -447,7 +465,19 @@ $("load-config").onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
     if (f.size > 1000000) throw Error("Configuration too large.");
-    applyConfig(fromPython(JSON.parse(await f.text())));
+    const saved = JSON.parse(await f.text());
+    applyConfig(fromPython(saved));
+    if (saved.lut) {
+      const ids = ["resolution", "xz-min", "xz-max", "yz-min", "yz-max"];
+      const keys = [
+        "resolution_deg",
+        "xz_min_deg",
+        "xz_max_deg",
+        "yz_min_deg",
+        "yz_max_deg",
+      ];
+      ids.forEach((id, i) => ($(`lut-${id}`).value = saved.lut[keys[i]]));
+    }
     changed();
     notice("Configuration imported. Rotation is shown as roll, pitch and yaw.");
   } catch (ex) {
@@ -562,7 +592,171 @@ function workerClient() {
   };
 }
 let cloudWorker = workerClient(),
-  sceneWorker = workerClient();
+  sceneWorker = workerClient(),
+  lutWorker = workerClient();
+
+function readLUTSettings() {
+  return {
+    resolution_deg: val("lut-resolution"),
+    xz_min_deg: val("lut-xz-min"),
+    xz_max_deg: val("lut-xz-max"),
+    yz_min_deg: val("lut-yz-min"),
+    yz_max_deg: val("lut-yz-max"),
+    interpolation: "bilinear",
+  };
+}
+function lutState(text, kind = "") {
+  for (const id of ["lut-status", "scene-lut-status"]) {
+    $(id).textContent = text;
+    $(id).dataset.state = kind;
+  }
+}
+async function checkLUTCompatibility(c = readConfig()) {
+  const generation = ++lutCheckGeneration;
+  if (!currentLUT) {
+    lutStale = false;
+    lutState("LUT not generated", "empty");
+    return false;
+  }
+  const signature = await lutWorker.run({
+    type: "lut_signature",
+    config: c,
+    settings: readLUTSettings(),
+  });
+  if (generation !== lutCheckGeneration) return false;
+  lutStale = signature.lutHash !== currentLUT.lutHash;
+  lutState(
+    lutStale ? "LUT stale — regenerate" : "LUT ready",
+    lutStale ? "stale" : "ready",
+  );
+  return !lutStale;
+}
+function lutValidationStats() {
+  if (!currentLUT?.validation) return;
+  const v = currentLUT.validation;
+  stats("lut-stats", [
+    ["Resolution", fmt(v.resolution_deg, 3), "deg"],
+    ["Grid nodes", v.cells.toLocaleString(), ""],
+    [
+      "Valid / invalid",
+      `${v.valid_cells.toLocaleString()} / ${v.invalid_cells.toLocaleString()}`,
+      "",
+    ],
+    ["Generation", fmt(v.generation_time_s, 3), "s"],
+    ["Memory", fmt(v.memory_bytes / 1048576, 2), "MB"],
+    ["Validation RMS", fmt(v.rms_angular_error_deg, 6), "deg"],
+    ["Validation P95", fmt(v.p95_angular_error_deg, 6), "deg"],
+    ["Validation maximum", fmt(v.max_angular_error_deg, 6), "deg"],
+    [
+      "Equivalent RMS at 1 / 5 / 10 m",
+      `${fmt(v.equivalent_rms_position_error_mm_at_1m, 3)} / ${fmt(v.equivalent_rms_position_error_mm_at_5m, 3)} / ${fmt(v.equivalent_rms_position_error_mm_at_10m, 3)}`,
+      "mm",
+    ],
+  ]);
+}
+async function generateCurrentLUT() {
+  if (lutBusy) return;
+  lutBusy = true;
+  $("generate-lut").disabled = true;
+  $("scene-generate-lut").disabled = true;
+  $("cancel-lut").hidden = false;
+  $("lut-progress").hidden = false;
+  lutState("Generating LUT", "busy");
+  try {
+    const response = await lutWorker.run(
+      {
+        type: "generate_lut",
+        config: readConfig(),
+        settings: readLUTSettings(),
+      },
+      (value) => ($("lut-progress").value = value),
+    );
+    currentLUT = response.lut;
+    lutStale = false;
+    lutState(response.reused ? "LUT ready · cached" : "LUT ready", "ready");
+    $("export-lut").disabled = false;
+    $("lut-views").hidden = false;
+    lutValidationStats();
+    await charts.drawLUT(currentLUT);
+    if (active === "scene" && $("scene-auto").checked) queueScene();
+  } catch (e) {
+    lutState("LUT not generated", "empty");
+    error(e.message);
+  } finally {
+    lutBusy = false;
+    $("generate-lut").disabled = false;
+    $("scene-generate-lut").disabled = false;
+    $("cancel-lut").hidden = true;
+    $("lut-progress").hidden = true;
+  }
+}
+$("generate-lut").onclick = generateCurrentLUT;
+$("scene-generate-lut").onclick = generateCurrentLUT;
+$("cancel-lut").onclick = () => {
+  lutWorker.stop();
+  lutWorker = workerClient();
+  lutBusy = false;
+  $("generate-lut").disabled = false;
+  $("scene-generate-lut").disabled = false;
+  $("cancel-lut").hidden = true;
+  $("lut-progress").hidden = true;
+  lutState(
+    currentLUT ? "LUT stale — regenerate" : "LUT not generated",
+    currentLUT ? "stale" : "empty",
+  );
+};
+for (const id of [
+  "lut-resolution",
+  "lut-xz-min",
+  "lut-xz-max",
+  "lut-yz-min",
+  "lut-yz-max",
+])
+  $(id).addEventListener("input", () =>
+    checkLUTCompatibility().catch((e) => error(e.message)),
+  );
+$("export-lut").onclick = async () => {
+  try {
+    if (!currentLUT || !(await checkLUTCompatibility()))
+      throw Error("Generate a compatible LUT before exporting.");
+    const response = await lutWorker.run({
+      type: "export_lut",
+      lut: currentLUT,
+    });
+    jsonDownload(response.data, "enclosure-angular-lut.json");
+  } catch (e) {
+    error(e.message);
+  }
+};
+$("import-lut").onchange = async (event) => {
+  try {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 120 * 1024 * 1024) throw Error("LUT JSON exceeds 120 MB.");
+    const response = await lutWorker.run({
+      type: "import_lut",
+      text: await file.text(),
+      config: readConfig(),
+    });
+    currentLUT = response.lut;
+    const s = currentLUT.settings;
+    $("lut-resolution").value = String(s.resolution_deg);
+    $("lut-xz-min").value = s.xz_min_deg;
+    $("lut-xz-max").value = s.xz_max_deg;
+    $("lut-yz-min").value = s.yz_min_deg;
+    $("lut-yz-max").value = s.yz_max_deg;
+    lutStale = false;
+    lutState("LUT ready · imported", "ready");
+    $("export-lut").disabled = false;
+    $("lut-views").hidden = false;
+    lutValidationStats();
+    await charts.drawLUT(currentLUT);
+    error("");
+  } catch (e) {
+    error(e.message);
+  }
+  event.target.value = "";
+};
 async function loadCloud(text, name) {
   if (cloudBusy)
     throw Error(
@@ -573,7 +767,14 @@ async function loadCloud(text, name) {
   cloudRun = null;
   cloudLoaded = false;
   $("correct-cloud").disabled = true;
-  for (const id of ["cloud3d", "cloud-hist"]) {
+  for (const id of [
+    "cloud3d",
+    "cloud3d-b",
+    "cloud-hist",
+    "cloud-correction-range",
+    "cloud-method-range",
+    "cloud-angular-error",
+  ]) {
     await charts.purge(id);
     $(id).replaceChildren();
   }
@@ -603,16 +804,22 @@ $("cloud-file").onchange = async (e) => {
   e.target.value = "";
 };
 function rangeNote() {
-  const mode = $("cloud-mode").value;
-  $("cloud-reference").disabled = mode !== "optical_path";
+  const mode = $("cloud-mode").value,
+    method = $("cloud-method").value,
+    usesAnalytical = method !== "lut";
+  $("cloud-reference").disabled = !usesAnalytical || mode !== "optical_path";
+  $("cloud-mode").disabled = !usesAnalytical;
+  $("lut-panel").hidden = method === "analytical";
   $("range-note").textContent =
-    mode === "direction_only"
-      ? "Preserves the measured radius; approximates the exit ray as starting at the source."
-      : mode === "geometric_path"
-        ? "Use only when the reported radius is the sum of physical path lengths in all three media."
-        : "Assumes reference index × reported radius equals the one-way optical path. Check sensor firmware, range offsets and group-index effects.";
+    method === "lut"
+      ? "LUT correction preserves each point's measured radius and applies bilinearly interpolated angular correction."
+      : mode === "direction_only"
+        ? "Preserves the measured radius; approximates the exit ray as starting at the source."
+        : mode === "geometric_path"
+          ? "Use only when the reported radius is the sum of physical path lengths in all three media."
+          : "Assumes reference index × reported radius equals the one-way optical path. Check sensor firmware, range offsets and group-index effects.";
 }
-["cloud-unit", "cloud-mode", "cloud-reference"].forEach((id) =>
+["cloud-unit", "cloud-mode", "cloud-reference", "cloud-method"].forEach((id) =>
   $(id).addEventListener("input", () => {
     markStale();
     rangeNote();
@@ -621,23 +828,42 @@ function rangeNote() {
 $("correct-cloud").onclick = async () => {
   try {
     const c = readConfig(),
+      method = $("cloud-method").value,
       mode = $("cloud-mode").value,
       reference = val("cloud-reference"),
       factor = val("cloud-unit");
     if (
+      method !== "lut" &&
       mode === "optical_path" &&
       (!Number.isFinite(reference) || reference <= 0)
     )
       throw Error("Range reference index must be positive.");
+    if (method !== "analytical" && !(await checkLUTCompatibility(c)))
+      throw Error("Generate a compatible LUT for the current enclosure first.");
     cloudBusy = true;
     enableCloudExport(false);
     $("correct-cloud").disabled = true;
     $("cancel-cloud").hidden = false;
     $("cloud-progress").hidden = false;
     $("cloud-status").textContent = "Correcting locally…";
-    const snapshot = JSON.stringify({ c, mode, reference, factor });
+    const snapshot = JSON.stringify({
+      c,
+      method,
+      mode,
+      reference,
+      factor,
+      lutHash: currentLUT?.lutHash,
+    });
     const r = await cloudWorker.run(
-      { type: "correct", config: c, mode, reference, factor },
+      {
+        type: "correct",
+        config: c,
+        method,
+        mode,
+        reference,
+        factor,
+        lut: method === "analytical" ? null : currentLUT,
+      },
       (p) => ($("cloud-progress").value = p),
     );
     cloudResult = r;
@@ -645,6 +871,8 @@ $("correct-cloud").onclick = async () => {
       config: toPython(c),
       material: materialSettings(),
       range_model: mode,
+      correction_method: method,
+      lut_hash: method === "analytical" ? null : currentLUT.lutHash,
       range_reference_index: mode === "optical_path" ? reference : null,
       input_unit: factor === 1 ? "m" : factor === 0.01 ? "cm" : "mm",
       file: cloudName,
@@ -652,14 +880,16 @@ $("correct-cloud").onclick = async () => {
     drawCloud();
     const current = JSON.stringify({
       c: readConfig(),
+      method: $("cloud-method").value,
       mode: $("cloud-mode").value,
       reference: val("cloud-reference"),
       factor: val("cloud-unit"),
+      lutHash: currentLUT?.lutHash,
     });
     if (snapshot === current) {
       enableCloudExport(true);
       $("cloud-status").textContent =
-        `Correction complete: ${r.valid.toLocaleString()} / ${r.total.toLocaleString()} valid points. ${r.total - r.valid} rows rejected.`;
+        `Correction complete. ${r.analyticalValid.toLocaleString()} analytical and ${r.lutValid.toLocaleString()} LUT points are valid.`;
     } else markStale();
     error("");
   } catch (e) {
@@ -683,34 +913,164 @@ $("cancel-cloud").onclick = () => {
 function drawCloud() {
   if (!cloudResult) return;
   const r = cloudResult,
-    data = [];
-  if ($("show-raw").checked)
-    data.push(charts.points3(r.raw, "Raw", "#b5c1c6", 2));
-  if ($("show-corrected").checked)
-    data.push(
-      charts.points3(r.corrected, "Corrected", r.deviations, 2, "Shift (mm)"),
-    );
-  charts.plot("cloud3d", data, {
-    scene: charts.sceneLayout("m"),
-    margin: { l: 0, r: 0, t: 0, b: 0 },
-    legend: { orientation: "h", x: 0, y: 1 },
-  });
-  charts.histogram("cloud-hist", r.histogram);
+    view = $("cloud-view").value,
+    finite = (points) => points.filter((p) => p.every(Number.isFinite)),
+    raw = charts.points3(finite(r.raw), "Raw", "#86969c", 3),
+    analytical = charts.points3(
+      finite(r.analytical),
+      "Analytical correction",
+      "#117f8a",
+      4,
+    ),
+    lut = charts.points3(finite(r.lut), "LUT correction", "#e56b54", 4),
+    layout = {
+      scene: charts.sceneLayout("m"),
+      margin: { l: 0, r: 0, t: 0, b: 0 },
+      legend: { orientation: "h", x: 0, y: 1 },
+    };
+  raw.marker.style = "ring";
+  raw.marker.opacity = 0.55;
+  analytical.marker.overlay = true;
+  lut.marker.overlay = true;
+  $("cloud3d-b").hidden = view !== "side";
+  if (view === "side") {
+    Promise.all([
+      charts.plot("cloud3d", [raw, analytical], layout),
+      charts.plot("cloud3d-b", [raw, lut], layout),
+    ]).then(() => charts.linkCameras("cloud3d", "cloud3d-b"));
+  } else {
+    let data =
+      view === "raw"
+        ? [raw]
+        : view === "analytical"
+          ? [analytical]
+          : view === "lut"
+            ? [lut]
+            : view === "all"
+              ? [raw, analytical, lut]
+              : [analytical, lut];
+    if (view === "difference") {
+      const paired = [],
+        colors = [];
+      r.analytical.forEach((p, i) => {
+        if (p.every(Number.isFinite) && r.lut[i]?.every(Number.isFinite)) {
+          paired.push(r.lut[i]);
+          colors.push(Math.hypot(...p.map((v, j) => v - r.lut[i][j])) * 1000);
+        }
+      });
+      data = [
+        charts.points3(
+          paired,
+          "Analytical vs LUT",
+          colors,
+          5,
+          "Method difference (mm)",
+        ),
+      ];
+    }
+    charts.plot("cloud3d", data, layout);
+  }
+  charts.seriesPlot(
+    "cloud-correction-range",
+    r.ranges,
+    [
+      {
+        name: "Analytical",
+        values: r.rangeAnalyticalMagnitude,
+        color: charts.colors.teal,
+      },
+      { name: "LUT", values: r.rangeLUTMagnitude, color: charts.colors.coral },
+    ],
+    "Point range (m)",
+    "Correction magnitude (mm)",
+  );
+  charts.seriesPlot(
+    "cloud-method-range",
+    r.ranges,
+    [
+      {
+        name: "Method difference",
+        values: r.rangeMethodDifference,
+        color: "#7d63a7",
+      },
+    ],
+    "Point range (m)",
+    "Analytical vs LUT (mm)",
+  );
+  charts.seriesPlot(
+    "cloud-angular-error",
+    r.ranges,
+    [
+      {
+        name: "LUT interpolation error",
+        values: r.rangeLUTInterpolationAngular,
+        color: "#b88412",
+      },
+    ],
+    "Point range (m)",
+    "Angular difference (deg)",
+  );
+  charts.histogram("cloud-hist", r.histogram, "Correction magnitude (mm)");
+  const m = r.metrics.method_difference_mm,
+    a = r.metrics.method_angular_difference_deg,
+    analyticalShift = r.metrics.analytical_correction_magnitude_mm,
+    lutShift = r.metrics.lut_correction_magnitude_mm,
+    rt = r.runtime,
+    counts = (values) =>
+      Object.entries(values)
+        .map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`)
+        .join(" · ") || "—";
   stats("cloud-stats", [
     ["Input points", r.total.toLocaleString(), ""],
-    ["Valid points", r.valid.toLocaleString(), ""],
-    ["RMS displacement", fmt(r.rms, 3), "mm"],
-    ["Maximum displacement", fmt(r.max, 3), "mm"],
+    ["Valid analytical", r.analyticalValid.toLocaleString(), ""],
+    ["Valid LUT", r.lutValid.toLocaleString(), ""],
+    [
+      "Rejected analytical / LUT",
+      `${r.total - r.analyticalValid} / ${r.total - r.lutValid}`,
+      "",
+    ],
+    ["Analytical statuses", counts(r.analyticalCounts), ""],
+    ["LUT statuses", counts(r.lutCounts), ""],
+    [
+      "Analytical correction magnitude",
+      `${fmt(analyticalShift.mean, 3)} mean · ${fmt(analyticalShift.rms, 3)} RMS`,
+      "mm",
+    ],
+    [
+      "LUT correction magnitude",
+      `${fmt(lutShift.mean, 3)} mean · ${fmt(lutShift.rms, 3)} RMS`,
+      "mm",
+    ],
+    [
+      "Mean method difference",
+      fmt(m.mean, 3),
+      "mm",
+      "Method comparison, not ground-truth error",
+    ],
+    ["RMS method difference", fmt(m.rms, 3), "mm"],
+    ["Median / P95", `${fmt(m.median, 3)} / ${fmt(m.p95, 3)}`, "mm"],
+    ["Maximum method difference", fmt(m.max, 3), "mm"],
+    ["Mean angular difference", fmt(a.mean, 6), "deg"],
+    ["Analytical runtime", fmt(rt.analytical_ms, 2), "ms"],
+    ["LUT runtime", fmt(rt.lut_ms, 2), "ms"],
+    [
+      "Analytical throughput",
+      fmt(rt.analytical_points_per_second, 0),
+      "points/s",
+    ],
+    ["LUT throughput", fmt(rt.lut_points_per_second, 0), "points/s"],
+    ["LUT speed-up", fmt(rt.lut_speedup, 2), "×", "Measured in this browser"],
   ]);
 }
-["show-raw", "show-corrected"].forEach((id) => ($(id).onchange = drawCloud));
+$("cloud-view").onchange = drawCloud;
 for (const format of ["pcd", "csv"])
   $("export-" + format).onclick = async () => {
     try {
-      const r = await cloudWorker.run({ type: "export", format });
+      const layer = $("cloud-export-layer").value;
+      const r = await cloudWorker.run({ type: "export", format, layer });
       download(
         r.text,
-        `corrected.${format}`,
+        `${r.layer}-corrected.${format}`,
         format === "csv" ? "text/csv" : "text/plain",
       );
     } catch (e) {
@@ -725,8 +1085,10 @@ $("export-report").onclick = () =>
       valid: cloudResult.valid,
       status_counts: cloudResult.counts,
       row_status: cloudResult.statuses,
-      rms_displacement_mm: cloudResult.rms,
-      max_displacement_mm: cloudResult.max,
+      analytical_status_counts: cloudResult.analyticalCounts,
+      lut_status_counts: cloudResult.lutCounts,
+      method_comparison_metrics: cloudResult.metrics,
+      runtime: cloudResult.runtime,
     },
     "correction-report.json",
   );
@@ -809,12 +1171,14 @@ function worldPose() {
 function sceneSnapshot() {
   return {
     config: toPython(readConfig()),
+    lut: readLUTSettings(),
     material: materialSettings(),
     objects: structuredClone(readObjects()),
     pose: worldPose(),
     resolution: val("resolution"),
     fov: val("fov"),
     mode: $("scene-mode").value,
+    correction_method: $("scene-correction-method").value,
   };
 }
 function storeStation() {
@@ -892,6 +1256,7 @@ $("object-list").onchange = objectEditor;
   "resolution",
   "fov",
   "scene-mode",
+  "scene-correction-method",
 ].forEach((id) => $(id).addEventListener("input", sceneEdited));
 $("add-object").onclick = () => {
   if (objects.length >= 30) {
@@ -929,6 +1294,11 @@ async function runScene() {
   const generation = ++sceneGeneration;
   try {
     const snapshot = sceneSnapshot();
+    const needsLUT = snapshot.correction_method !== "analytical";
+    if (needsLUT && !(await checkLUTCompatibility(readConfig())))
+      throw Error(
+        "Generate a compatible LUT for the current enclosure before running LUT correction.",
+      );
     $("scene-status").textContent = "Tracing rays in the scene…";
     const r = await sceneWorker.run({
       type: "scene",
@@ -938,6 +1308,7 @@ async function runScene() {
       resolution: snapshot.resolution,
       fov: snapshot.fov,
       mode: snapshot.mode,
+      lut: needsLUT ? currentLUT : null,
     });
     if (generation !== sceneGeneration) return;
     sceneResult = r.result;
@@ -946,7 +1317,7 @@ async function runScene() {
     const matched =
       JSON.stringify(snapshot) === JSON.stringify(sceneSnapshot());
     $("scene-status").textContent = matched
-      ? `${sceneResult.truth.length.toLocaleString()} returns · ${sceneResult.rejected} invalid rays · ${sceneResult.missed} misses. Optical ranges simulated with n_ref = n_inside.`
+      ? `${sceneResult.truth.length.toLocaleString()} returns · ${sceneResult.rejected} rejected rays · ${sceneResult.missed} misses. Metrics use synthetic refracted-hit truth.`
       : "Settings changed; updating simulation…";
     for (const id of ["scene-pcd", "scene-csv", "scene-report"])
       $(id).disabled = !matched;
@@ -1006,51 +1377,163 @@ function drawScene() {
   if (sceneResult) {
     const r = sceneResult,
       layer = $("scene-layer").value;
-    for (const [key, name, color, size, opacity] of [
-      ["bare", "No enclosure reference", "#4d73bd", 3.5, 0.75],
-      ["truth", "Synthetic truth (evaluation)", "#87969b", 3.5, 0.65],
-      ["raw", "Collected with enclosure", "#d8523c", 4.5, 0.82],
-      ["corrected", "Corrected from collected cloud", r.error, 5.5, 1],
-    ])
-      if (
-        layer === "all" ||
-        layer === key ||
-        (layer === "comparison" && ["raw", "corrected"].includes(key))
-      ) {
-        const cloud = charts.points3(
-          r[key],
-          name,
-          color,
-          size,
-          key === "corrected" ? "Evaluation error (mm)" : undefined,
-        );
-        cloud.marker.opacity = opacity;
-        if (key === "raw") cloud.marker.style = "ring";
-        if (["raw", "corrected"].includes(key)) cloud.marker.overlay = true;
-        data.push(cloud);
-      }
+    const addLayer = (points, name, color, size, bar, ring = false) => {
+      if (!points?.length) return;
+      const cloud = charts.points3(points, name, color, size, bar);
+      cloud.marker.opacity = ring ? 0.58 : 0.92;
+      cloud.marker.overlay = true;
+      if (ring) cloud.marker.style = "ring";
+      data.push(cloud);
+    };
+    if (layer === "bare") addLayer(r.bare, "No enclosure", "#4d73bd", 4);
+    if (layer === "raw") addLayer(r.raw, "Raw", "#d8523c", 5, null, true);
+    if (layer === "truth")
+      addLayer(r.truth, "Refracted-hit truth", "#87969b", 4);
+    if (layer === "analytical")
+      addLayer(r.analytical, "Analytical correction", charts.colors.teal, 5);
+    if (layer === "lut")
+      addLayer(r.lut, "LUT correction", charts.colors.coral, 5);
+    if (layer === "analytical-error")
+      addLayer(
+        r.analytical,
+        "Analytical ground-truth error",
+        r.error,
+        5,
+        "Error (mm)",
+      );
+    if (layer === "lut-error")
+      addLayer(r.lut, "LUT ground-truth error", r.lutError, 5, "Error (mm)");
+    if (layer === "method-difference")
+      addLayer(
+        r.lut,
+        "LUT vs Analytical",
+        r.methodDifference,
+        5,
+        "Method difference (mm)",
+      );
+    if (layer === "comparison") {
+      addLayer(r.raw, "Raw", "#9ba8ad", 4, null, true);
+      addLayer(r.analytical, "Analytical correction", charts.colors.teal, 5);
+      addLayer(r.lut, "LUT correction", charts.colors.coral, 5);
+    }
+    const raw = r.metrics.raw,
+      analyticalMetric = r.metrics.analytical,
+      lutMetric = r.metrics.lut,
+      methodMetric = r.metrics.method_difference;
     stats("scene-stats", [
-      ["No-enclosure returns", r.bare.length.toLocaleString(), ""],
-      ["Enclosure returns", r.truth.length.toLocaleString(), ""],
-      ["Raw 3D RMSE", fmt(rmse(r.rawError), 4), "mm"],
-      ["Corrected 3D RMSE", fmt(rmse(r.error), 6), "mm"],
-    ]);
-    charts.plot(
-      "scene-errors",
+      ["Raw 3D RMSE", fmt(raw.rms, 4), "mm", "Synthetic ground-truth error"],
       [
+        "Analytical 3D RMSE",
+        fmt(analyticalMetric.rms, 6),
+        "mm",
+        "Exact-model consistency result",
+      ],
+      [
+        "LUT 3D RMSE",
+        fmt(lutMetric.rms, 4),
+        "mm",
+        "Synthetic ground-truth error",
+      ],
+      [
+        "Raw / analytical / LUT mean",
+        `${fmt(raw.mean, 3)} / ${fmt(analyticalMetric.mean, 3)} / ${fmt(lutMetric.mean, 3)}`,
+        "mm",
+      ],
+      [
+        "Raw / analytical / LUT P95",
+        `${fmt(raw.p95, 3)} / ${fmt(analyticalMetric.p95, 3)} / ${fmt(lutMetric.p95, 3)}`,
+        "mm",
+      ],
+      [
+        "Raw / analytical / LUT maximum",
+        `${fmt(raw.max, 3)} / ${fmt(analyticalMetric.max, 3)} / ${fmt(lutMetric.max, 3)}`,
+        "mm",
+      ],
+      [
+        "LUT vs Analytical RMS",
+        fmt(methodMetric.rms, 4),
+        "mm",
+        "Method difference",
+      ],
+      [
+        "LUT angular interpolation RMS",
+        fmt(r.metrics.lut_angular_interpolation.rms, 6),
+        "deg",
+      ],
+      [
+        "Analytical / LUT runtime",
+        `${fmt(r.analyticalTimeMs, 2)} / ${fmt(r.lutTimeMs, 2)}`,
+        "ms",
+      ],
+      [
+        "Measured LUT speed-up",
+        fmt(r.lutTimeMs > 0 ? r.analyticalTimeMs / r.lutTimeMs : NaN, 2),
+        "×",
+      ],
+      [
+        "Returns / misses / ray rejected",
+        `${r.truth.length} / ${r.missed} / ${r.rejected}`,
+        "",
+      ],
+      ["LUT rejected", r.lutRejected ?? "—", "points"],
+    ]);
+    charts.seriesPlot(
+      "scene-errors",
+      r.ranges,
+      [
+        { name: "Raw", values: r.rawError, color: "#9ba8ad" },
+        { name: "Analytical", values: r.error, color: charts.colors.teal },
         {
-          x: ["Raw with enclosure", "Corrected"],
-          y: [rmse(r.rawError), rmse(r.error)],
-          type: "bar",
-          marker: { color: [charts.colors.coral, charts.colors.teal] },
+          name: "LUT",
+          x: r.lutRanges,
+          values: r.lutError,
+          color: charts.colors.coral,
         },
       ],
-      {
-        yaxis: { title: { text: "3D point RMSE (mm)" }, rangemode: "tozero" },
-        xaxis: {
-          title: { text: "Evaluation only · corresponding synthetic hit" },
+      "Measured range (m)",
+      "Ground-truth error (mm)",
+    );
+    charts.seriesPlot(
+      "scene-angle-errors",
+      r.incidentAngles,
+      [
+        { name: "Raw", values: r.rawError, color: "#9ba8ad" },
+        { name: "Analytical", values: r.error, color: charts.colors.teal },
+        {
+          name: "LUT",
+          x: r.lutIncidentAngles,
+          values: r.lutError,
+          color: charts.colors.coral,
         },
-      },
+      ],
+      "Incident angle from sensor +Z (deg)",
+      "Ground-truth error (mm)",
+    );
+    charts.seriesPlot(
+      "scene-method-difference",
+      r.lutRanges,
+      [
+        {
+          name: "Method difference",
+          values: r.methodDifference,
+          color: "#7d63a7",
+        },
+      ],
+      "Measured range (m)",
+      "LUT vs Analytical (mm)",
+    );
+    charts.seriesPlot(
+      "scene-lut-angular",
+      r.lutIncidentAngles,
+      [
+        {
+          name: "LUT interpolation error",
+          values: r.lutAngularError,
+          color: "#b88412",
+        },
+      ],
+      "Incident angle from sensor +Z (deg)",
+      "Angular difference (deg)",
     );
   }
   charts
@@ -1180,6 +1663,14 @@ $("load-scene").onchange = async (e) => {
     $("resolution").value = data.resolution;
     $("fov").value = data.fov;
     $("scene-mode").value = data.mode;
+    $("scene-correction-method").value = data.correction_method || "compare";
+    if (data.lut) {
+      $("lut-resolution").value = data.lut.resolution_deg;
+      $("lut-xz-min").value = data.lut.xz_min_deg;
+      $("lut-xz-max").value = data.lut.xz_max_deg;
+      $("lut-yz-min").value = data.lut.yz_min_deg;
+      $("lut-yz-max").value = data.lut.yz_max_deg;
+    }
     objectEditor();
     sceneEdited();
   } catch (ex) {
@@ -1200,8 +1691,15 @@ $("scene-report").onclick = () =>
   jsonDownload(
     {
       ...sceneRun,
-      raw_rmse_mm: rmse(sceneResult.rawError),
-      corrected_rmse_mm: rmse(sceneResult.error),
+      synthetic_ground_truth_metrics: sceneResult.metrics,
+      runtime: {
+        analytical_ms: sceneResult.analyticalTimeMs,
+        lut_ms: sceneResult.lutTimeMs,
+        lut_speedup:
+          sceneResult.lutTimeMs > 0
+            ? sceneResult.analyticalTimeMs / sceneResult.lutTimeMs
+            : null,
+      },
       returns: sceneResult.truth.length,
       rejected: sceneResult.rejected,
       missed: sceneResult.missed,

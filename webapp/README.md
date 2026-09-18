@@ -11,8 +11,8 @@ A static browser application for the same concentric spherical-shell model as th
 | Enclosure designer | Inner radius, thickness, centre/source XYZ, roll/pitch/yaw, indices, hemisphere/full sphere, source axes and forward direction, pinned comparison curves |
 | Beam inspector | Selected beam, true 3D surface angles, projected paths, normals, inner/outer interface zoom and expanded plots |
 | Deflection atlas | Selectable XY/XZ/YZ sweeps in the designer, 0–180° or 0–360° ranges, full-sphere direction colours and azimuth/polar heatmap |
-| Point clouds | Local CSV/ASCII PCD input, three range models, raw/corrected overlay, displacement histogram, CSV/PCD output and per-row status report |
-| Scene lab | Editable opaque planes, spheres and boxes; up to eight independent sensor stations; station-specific enclosure parameters; JSON scene import/export; scan simulation and ground-truth comparisons |
+| Point clouds | Analytical/LUT/both correction, dynamic LUT validation and import/export, selectable overlays and difference maps, measured performance, attribute-preserving CSV/PCD output |
+| Scene lab | Raw, analytical and LUT reconstruction against synthetic truth; editable targets; up to eight sensor stations; error/range/angle plots and JSON scene import/export |
 
 
 The header **Model & assumptions** button opens equations, coordinate conventions, material sources, paper citation and the simplified-model scope in a dialog.
@@ -44,11 +44,12 @@ The app source is in `src/`; the build writes only to `dist/`, which is ignored 
 
 - Controls use mm for enclosure geometry, degrees for angles, and metres for scene positions. All numerical tracing uses metres.
 - Sensor +Z is forward. Active right-handed rotations use `Rz(yaw) Ry(pitch) Rx(roll)`. Imported Python matrices are converted to equivalent Euler angles for editing.
+- LUT angles use `theta_xz = atan2(X,Z)` and `theta_yz = atan2(Y,Z)` in the sensor frame. The app bilinearly interpolates valid exit vectors and normalizes the result.
 - Planar curves report the full 3D angle between incident and exit directions, not an independent two-dimensional approximation. The frame selector determines whether the input plane uses enclosure or sensor axes.
 - The upper-shell aperture is measured relative to the dome centre Z. Invalid directions and total internal reflection produce gaps, not interpolated corrections.
 - Clouds must be original, local sensor-frame XYZ. A registered map needs per-acquisition pose handling outside this app. CSV fields are named `x,y,z`; additional columns are retained in CSV output.
 - ASCII PCD input preserves fields, counts, row order and viewpoint metadata. XYZ is written as 64-bit floating point. Binary/compressed PCD and PLY/LAS are not supported. CSV-to-PCD output is explicitly XYZ-only; CSV is the attribute-preserving export for CSV input.
-- Browser limits: 80 MB input and 500,000 points. All rows are corrected in a worker; the display samples at most 20,000 valid points. Displacement statistics use all valid rows. Invalid rows are NaN and identified in the JSON report. Use Python for larger inputs.
+- Browser limits: 80 MB input, 500,000 points and four million LUT nodes. Heavy correction, simulation, generation and validation run in workers. The display samples at most 20,000 points; metrics use all valid rows. Invalid rows are NaN and identified in the JSON report. Use Python for larger inputs.
 - Edits invalidate prior exports until recomputed. Settings and clouds are not persisted automatically or sent to a server; save config/scene/report files to retain your work.
 
 ## Scene interpretation
@@ -76,7 +77,7 @@ The optical range approximation uses the same configured index for ray bending a
 Select the inside medium, outside medium and dome material independently. Air, vacuum,
 water and the existing dome materials include preset indices; nominal values are not
 calibrated for every wavelength or operating condition. Select Custom for direct entry,
-or use **Add material** to save a name, phase index and optional measurement notes.
+or choose **Add dome material…** or **Add medium…** inside the relevant selector to save a name, phase index and optional measurement notes.
 The shared library is stored locally in this browser (up to 100 entries). Scene JSON
 includes the library and selections for use on another computer; Python configuration
 JSON retains the numerical indices. Browser storage failures are reported before saving.

@@ -67,7 +67,10 @@ export class Viewer3D {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = false;
     this.controls.screenSpacePanning = true;
-    this.controls.addEventListener("change", () => this.draw());
+    this.controls.addEventListener("change", () => {
+      this.draw();
+      this.onCameraChange?.(this);
+    });
     this.content = new THREE.Group();
     this.grid = new THREE.Group();
     this.scene.add(this.content, this.grid);
@@ -529,6 +532,16 @@ export class Viewer3D {
       .copy(this.controls.target)
       .addScaledVector(d, distance);
     this.controls.update();
+    this.draw();
+  }
+  syncCamera(source) {
+    this.camera.position.copy(source.camera.position);
+    this.camera.quaternion.copy(source.camera.quaternion);
+    this.camera.up.copy(source.camera.up);
+    this.controls.target.copy(source.controls.target);
+    this.camera.near = source.camera.near;
+    this.camera.far = source.camera.far;
+    this.camera.updateProjectionMatrix();
     this.draw();
   }
   draw() {

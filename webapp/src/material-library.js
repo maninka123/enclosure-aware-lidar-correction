@@ -54,6 +54,10 @@ export function populateMaterials() {
     const selected = $(id).value;
     $(id).replaceChildren(
       ...Object.entries(materials).map(([key, m]) => new Option(m.name, key)),
+      new Option(
+        id === "material" ? "＋ Add dome material…" : "＋ Add medium…",
+        "__add__",
+      ),
     );
     $(id).value = Object.hasOwn(materials, selected) ? selected : "custom";
   }
@@ -93,30 +97,45 @@ export function restoreMedia(settings) {
 export function setupLibrary(onChange) {
   populateMaterials();
   syncMedia();
-  for (let i = 1; i < 3; i++)
+  let target = "material";
+  const openEditor = (id, previous) => {
+    target = id;
+    $(id).value = previous;
+    $("material-form").reset();
+    $("material-save-error").textContent = "";
+    $("material-dialog-title").textContent =
+      id === "material" ? "Add dome material" : "Add optical medium";
+    $("material-dialog").showModal();
+    $("new-material-name").focus();
+  };
+  $("material").addEventListener("focus", () => {
+    $("material").dataset.previous = $("material").value;
+  });
+  $("material").addEventListener("change", () => {
+    if ($("material").value === "__add__")
+      openEditor("material", $("material").dataset.previous || "custom");
+  });
+  for (let i = 1; i < 3; i++) {
+    $(selectors[i]).addEventListener("focus", () => {
+      $(selectors[i]).dataset.previous = $(selectors[i]).value;
+    });
     $(selectors[i]).onchange = () => {
+      if ($(selectors[i]).value === "__add__") {
+        openEditor(selectors[i], $(selectors[i]).dataset.previous || "air");
+        return;
+      }
       const n = indexFor($(selectors[i]).value, Number($("wavelength").value));
       if (n !== undefined) $(inputs[i]).value = n;
       $(inputs[i]).readOnly = $(selectors[i]).value !== "custom";
       $("medium-note").textContent = materials[$(selectors[i]).value].note;
       onChange();
     };
+  }
   $("wavelength").addEventListener("input", () => {
     for (let i = 1; i < 3; i++)
       if ($(selectors[i]).value === "bk7")
         $(selectors[i]).dispatchEvent(new Event("change"));
   });
-  let target = "material";
-  document.querySelectorAll("[data-add-material]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        target = b.dataset.addMaterial;
-        $("material-form").reset();
-        $("material-save-error").textContent = "";
-        $("material-dialog").showModal();
-        $("new-material-name").focus();
-      }),
-  );
   $("cancel-material").onclick = () => $("material-dialog").close();
   $("material-form").onsubmit = (e) => {
     e.preventDefault();
