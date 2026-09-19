@@ -900,48 +900,139 @@
           </p>
           <article class="card">
             <div class="card-head">
-              <h2>Scene & reconstructed returns</h2>
+              <div>
+                <h2>Scene & reconstructed returns</h2>
+                <p>Select any combination to compare in the same 3D view.</p>
+              </div>
               <div class="actions">
-                <select id="scene-layer" aria-label="Scene layer">
-                  <option value="comparison">Analytical + LUT</option>
-                  <option value="bare">No enclosure</option>
-                  <option value="raw">Collected with enclosure</option>
-                  <option value="truth">Synthetic truth · evaluation</option>
-                  <option value="analytical">Analytical corrected</option>
-                  <option value="lut">LUT corrected</option>
-                  <option value="analytical-error">
-                    Analytical error colour
-                  </option>
-                  <option value="lut-error">LUT error colour</option>
-                  <option value="method-difference">
-                    LUT vs Analytical difference
-                  </option></select
-                ><button data-expand="scene3d">⛶ Expand</button>
+                <button data-expand="scene3d">⛶ Expand</button>
               </div>
             </div>
+            <fieldset
+              class="scene-layer-picker"
+              aria-label="Visible scene layers"
+            >
+              <legend>Visible layers</legend>
+              <label style="--layer-color: #4d73bd"
+                ><input type="checkbox" name="scene-layer" value="bare" />No
+                enclosure</label
+              >
+              <label style="--layer-color: #9ba8ad"
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="raw"
+                  checked
+                />Raw · no correction</label
+              >
+              <label style="--layer-color: #87969b"
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="truth"
+                />Synthetic truth</label
+              >
+              <label style="--layer-color: #087f83"
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="analytical"
+                  checked
+                />Analytical</label
+              >
+              <label data-needs-lut style="--layer-color: #dc7358"
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="lut"
+                  checked
+                />LUT</label
+              >
+              <label
+                class="colour-layer"
+                style="
+                  --layer-color: linear-gradient(
+                    90deg,
+                    #0f737b,
+                    #ebd574,
+                    #ce554b
+                  );
+                "
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="analytical-error"
+                />Analytical error map</label
+              >
+              <label
+                data-needs-lut
+                class="colour-layer"
+                style="
+                  --layer-color: linear-gradient(
+                    90deg,
+                    #0f737b,
+                    #ebd574,
+                    #ce554b
+                  );
+                "
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="lut-error"
+                />LUT error map</label
+              >
+              <label data-needs-lut style="--layer-color: #7d63a7"
+                ><input
+                  type="checkbox"
+                  name="scene-layer"
+                  value="method-difference"
+                />LUT vs Analytical</label
+              >
+            </fieldset>
             <div id="scene3d" class="plot large"></div>
           </article>
           <div class="grid two">
             <article class="card">
               <div class="card-head">
-                <h2>Error vs range · synthetic truth</h2>
+                <h2>Endpoint error summary · synthetic truth</h2>
+              </div>
+              <div id="scene-error-summary" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>Endpoint error vs range · synthetic truth</h2>
               </div>
               <div id="scene-errors" class="plot"></div>
             </article>
             <article class="card">
-              <div class="card-head"><h2>Error vs incident angle</h2></div>
+              <div class="card-head">
+                <h2>Endpoint error vs incident angle</h2>
+              </div>
               <div id="scene-angle-errors" class="plot"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>Angular error vs incident angle</h2>
+              </div>
+              <div id="scene-angular-errors" class="plot"></div>
             </article>
             <article class="card">
               <div class="card-head">
                 <h2>LUT vs Analytical endpoint difference</h2>
               </div>
+              <p id="scene-method-empty" class="result-empty" hidden>
+                Generate a LUT to compare endpoint reconstruction methods.
+              </p>
               <div id="scene-method-difference" class="plot"></div>
             </article>
             <article class="card">
               <div class="card-head">
                 <h2>LUT interpolation angular error</h2>
               </div>
+              <p id="scene-angular-empty" class="result-empty" hidden>
+                Generate a LUT to measure interpolation against analytical
+                direction-only correction.
+              </p>
               <div id="scene-lut-angular" class="plot"></div>
             </article>
             <article class="card info-card">

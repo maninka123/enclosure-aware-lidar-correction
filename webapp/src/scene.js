@@ -152,6 +152,7 @@ export function simulate(
     lutAnalytical: [],
     lutStatus: [],
     lutError: [],
+    lutTruthAngularError: [],
     methodDifference: [],
     lutAngularError: [],
     lutRanges: [],
@@ -160,6 +161,8 @@ export function simulate(
     incidentAngles: [],
     error: [],
     rawError: [],
+    analyticalAngularError: [],
+    rawAngularError: [],
     displacement: [],
     object: [],
     rejected: 0,
@@ -233,6 +236,13 @@ export function simulate(
     result.rawError.push(
       norm(sub(measurement.rawWorld, measurement.truth)) * 1000,
     );
+    const truthDirection = sub(measurement.truth, origin);
+    result.rawAngularError.push(
+      angle(sub(measurement.rawWorld, origin), truthDirection),
+    );
+    result.analyticalAngularError.push(
+      angle(sub(correctedWorld, origin), truthDirection),
+    );
     result.displacement.push(
       norm(sub(correctedWorld, measurement.rawWorld)) * 1000,
     );
@@ -260,6 +270,9 @@ export function simulate(
       result.lutError.push(
         norm(sub(correctedWorld, result.truth[index])) * 1000,
       );
+      result.lutTruthAngularError.push(
+        angle(sub(correctedWorld, origin), sub(result.truth[index], origin)),
+      );
       result.methodDifference.push(
         norm(sub(correctedWorld, result.analytical[index])) * 1000,
       );
@@ -280,6 +293,9 @@ export function simulate(
     raw: summary(result.rawError),
     analytical: summary(result.error),
     lut: summary(result.lutError),
+    raw_angular: summary(result.rawAngularError),
+    analytical_angular: summary(result.analyticalAngularError),
+    lut_angular: summary(result.lutTruthAngularError),
     method_difference: summary(result.methodDifference),
     lut_angular_interpolation: summary(result.lutAngularError),
   };

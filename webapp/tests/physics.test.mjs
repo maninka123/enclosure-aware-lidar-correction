@@ -134,6 +134,9 @@ test("scene closest intersections and reconstruction", () => {
   assert.ok(r.truth.length > 100);
   assert.ok(Math.max(...r.error) < 1e-8);
   assert.ok(Math.max(...r.rawError) > 1);
+  assert.ok(Math.max(...r.analyticalAngularError) < 1e-10);
+  assert.ok(Math.max(...r.rawAngularError) > 0);
+  assert.ok(r.metrics.raw_angular.rms > r.metrics.analytical_angular.rms);
   const independent = correctCollectedCloud(r.rawLocal, c, "optical_path");
   assert.deepEqual(
     independent.map((row) => row.point),

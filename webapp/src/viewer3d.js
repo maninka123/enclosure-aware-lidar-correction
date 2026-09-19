@@ -195,6 +195,7 @@ export class Viewer3D {
     this.labels = [];
     this.labelLayer.replaceChildren();
     this.legend.replaceChildren();
+    this.showTraceLegend = layout.showlegend !== false;
     this.units =
       layout.scene?.xaxis?.title?.text?.match(/\((.*?)\)/)?.[1] || "m";
     this.axes.textContent = `Z up \u00b7 ${this.units === "unit" ? "unit directions" : `coordinates in ${this.units}`}`;
@@ -388,7 +389,11 @@ export class Viewer3D {
       cloud.userData = { name: d.name, trace: d };
       this.content.add(cloud);
       this.pickables.push(cloud);
-      if (layoutLegend(d) && this.host.id === "scene3d") {
+      if (
+        this.showTraceLegend &&
+        layoutLegend(d) &&
+        this.host.id === "scene3d"
+      ) {
         const item = document.createElement("span");
         item.textContent = d.name;
         item.dataset.marker = marker.style || "dot";

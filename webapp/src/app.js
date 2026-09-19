@@ -667,7 +667,12 @@ async function generateCurrentLUT() {
   }
 }
 $("generate-lut").onclick = generateCurrentLUT;
-$("scene-generate-lut").onclick = generateCurrentLUT;
+$("scene-generate-lut").onclick = async () => {
+  $("scene-correction-method").value = "compare";
+  await generateCurrentLUT();
+  clearTimeout(sceneTimer);
+  if (currentLUT && !lutStale) await runScene();
+};
 $("cancel-lut").onclick = () => {
   lutWorker.stop();
   lutWorker = workerClient();
@@ -1316,6 +1321,17 @@ function drawScene() {
     pose = worldPose(),
     q = rotation(...pose.rpy),
     origin = add(pose.position, mv(q, config.origin));
+  const hasLUTResult = Boolean(sceneResult?.lut?.length);
+  document
+    .querySelectorAll(".scene-layer-picker [data-needs-lut]")
+    .forEach((label) => {
+      label.classList.toggle("is-unavailable", !hasLUTResult);
+      const input = label.querySelector("input");
+      input.disabled = !hasLUTResult;
+      label.title = hasLUTResult
+        ? ""
+        : "Generate a LUT and run comparison to enable this layer.";
+    });
   stations.forEach((s, i) => {
     if (i === stationIndex) return;
     const c = fromPython(s.config),
@@ -1352,7 +1368,13 @@ function drawScene() {
   );
   if (sceneResult) {
     const r = sceneResult,
-      layer = $("scene-layer").value;
+      layers = new Set(
+        [
+          ...document.querySelectorAll(
+            '[name="scene-layer"]:checked:not(:disabled)',
+          ),
+        ].map((input) => input.value),
+      );
     const addLayer = (points, name, color, size, bar, ring = false) => {
       if (!points?.length) return;
       const cloud = charts.points3(points, name, color, size, bar);
@@ -1361,15 +1383,16 @@ function drawScene() {
       if (ring) cloud.marker.style = "ring";
       data.push(cloud);
     };
-    if (layer === "bare") addLayer(r.bare, "No enclosure", "#4d73bd", 4);
-    if (layer === "raw") addLayer(r.raw, "Raw", "#d8523c", 5, null, true);
-    if (layer === "truth")
+    if (layers.has("bare")) addLayer(r.bare, "No enclosure", "#4d73bd", 4);
+    if (layers.has("raw"))
+      addLayer(r.raw, "Raw · no correction", "#9ba8ad", 6, null, true);
+    if (layers.has("truth"))
       addLayer(r.truth, "Refracted-hit truth", "#87969b", 4);
-    if (layer === "analytical")
+    if (layers.has("analytical"))
       addLayer(r.analytical, "Analytical correction", charts.colors.teal, 5);
-    if (layer === "lut")
+    if (layers.has("lut"))
       addLayer(r.lut, "LUT correction", charts.colors.coral, 5);
-    if (layer === "analytical-error")
+    if (layers.has("analytical-error"))
       addLayer(
         r.analytical,
         "Analytical ground-truth error",
@@ -1377,9 +1400,9 @@ function drawScene() {
         5,
         "Error (mm)",
       );
-    if (layer === "lut-error")
+    if (layers.has("lut-error"))
       addLayer(r.lut, "LUT ground-truth error", r.lutError, 5, "Error (mm)");
-    if (layer === "method-difference")
+    if (layers.has("method-difference"))
       addLayer(
         r.lut,
         "LUT vs Analytical",
@@ -1387,11 +1410,6 @@ function drawScene() {
         5,
         "Method difference (mm)",
       );
-    if (layer === "comparison") {
-      addLayer(r.raw, "Raw", "#9ba8ad", 4, null, true);
-      addLayer(r.analytical, "Analytical correction", charts.colors.teal, 5);
-      addLayer(r.lut, "LUT correction", charts.colors.coral, 5);
-    }
     const raw = r.metrics.raw,
       analyticalMetric = r.metrics.analytical,
       lutMetric = r.metrics.lut,
@@ -1437,6 +1455,12 @@ function drawScene() {
         "deg",
       ],
       [
+        "Raw / analytical / LUT angular RMS",
+        `${fmt(r.metrics.raw_angular.rms, 5)} / ${fmt(r.metrics.analytical_angular.rms, 5)} / ${fmt(r.metrics.lut_angular.rms, 5)}`,
+        "deg",
+        "Angular error against synthetic truth",
+      ],
+      [
         "Analytical / LUT runtime",
         `${fmt(r.analyticalTimeMs, 2)} / ${fmt(r.lutTimeMs, 2)}`,
         "ms",
@@ -1453,6 +1477,27 @@ function drawScene() {
       ],
       ["LUT rejected", r.lutRejected ?? "—", "points"],
     ]);
+    charts.plot(
+      "scene-error-summary",
+      [
+        {
+          type: "bar",
+          x: ["Raw", "Analytical", "LUT"],
+          y: [raw.rms, analyticalMetric.rms, lutMetric.rms],
+          marker: {
+            color: ["#9ba8ad", charts.colors.teal, charts.colors.coral],
+          },
+        },
+      ],
+      {
+        xaxis: { title: { text: "Reconstruction" } },
+        yaxis: {
+          title: { text: "3D endpoint RMSE (mm)" },
+          rangemode: "tozero",
+        },
+        margin: { l: 60, r: 20, t: 20, b: 55 },
+      },
+    );
     charts.seriesPlot(
       "scene-errors",
       r.ranges,
@@ -1486,6 +1531,30 @@ function drawScene() {
       "Ground-truth error (mm)",
     );
     charts.seriesPlot(
+      "scene-angular-errors",
+      r.incidentAngles,
+      [
+        { name: "Raw", values: r.rawAngularError, color: "#9ba8ad" },
+        {
+          name: "Analytical",
+          values: r.analyticalAngularError,
+          color: charts.colors.teal,
+        },
+        {
+          name: "LUT",
+          x: r.lutIncidentAngles,
+          values: r.lutTruthAngularError,
+          color: charts.colors.coral,
+        },
+      ],
+      "Incident angle from sensor +Z (deg)",
+      "Angular error vs truth (deg)",
+    );
+    $("scene-method-empty").hidden = hasLUTResult;
+    $("scene-angular-empty").hidden = hasLUTResult;
+    $("scene-method-difference").hidden = !hasLUTResult;
+    $("scene-lut-angular").hidden = !hasLUTResult;
+    charts.seriesPlot(
       "scene-method-difference",
       r.lutRanges,
       [
@@ -1516,7 +1585,7 @@ function drawScene() {
     .plot("scene3d", data, {
       scene: charts.sceneLayout("m"),
       margin: { l: 0, r: 0, t: 10, b: 0 },
-      legend: { orientation: "h", x: 0, y: 1 },
+      showlegend: false,
     })
     .then(() => {
       charts.onPick("scene3d", (event) => {
@@ -1537,7 +1606,9 @@ function drawScene() {
       });
     });
 }
-$("scene-layer").onchange = drawScene;
+document
+  .querySelectorAll('[name="scene-layer"]')
+  .forEach((input) => input.addEventListener("change", drawScene));
 $("save-scene").onclick = () => {
   try {
     storeStation();

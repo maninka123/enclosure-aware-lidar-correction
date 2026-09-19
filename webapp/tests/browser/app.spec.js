@@ -117,13 +117,26 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/#scene");
-  await expect(page.locator("#scene-layer")).toHaveValue("comparison");
+  await expect(page.locator('[name="scene-layer"][value="raw"]')).toBeChecked();
+  await expect(
+    page.locator('[name="scene-layer"][value="analytical"]'),
+  ).toBeChecked();
+  await expect(
+    page.locator('[name="scene-layer"][value="lut"]'),
+  ).toBeDisabled();
   await expect(page.locator(".scene-method-note")).toContainText(
     "ground truth is not supplied",
   );
   await expect(page.locator("#scene-status")).toContainText("returns", {
     timeout: 30000,
   });
+  await expect(
+    page.locator("#scene-error-summary canvas").first(),
+  ).toBeVisible();
+  await expect(
+    page.locator("#scene-angular-errors canvas").first(),
+  ).toBeVisible();
+  await expect(page.locator("#scene-method-empty")).toBeVisible();
   await page.locator("#scene-auto").uncheck();
   await page.locator("#object-x").fill(".5");
   await page.locator("#simulate").click();
@@ -403,15 +416,22 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   );
   await page.getByRole("tab", { name: /Scene lab/ }).click();
   await page.locator("#scene-auto").uncheck();
-  await page.locator("#scene-correction-method").selectOption("compare");
-  await page.locator("#simulate").click();
+  await page.locator("#scene-generate-lut").click();
+  await expect(page.locator("#scene-correction-method")).toHaveValue("compare");
   await expect(page.locator("#scene-status")).toContainText("returns", {
     timeout: 30000,
   });
   await expect(page.locator("#scene-stats")).toContainText("LUT 3D RMSE");
+  await expect(page.locator("#scene-stats")).toContainText("angular RMS");
+  await expect(page.locator('[name="scene-layer"][value="lut"]')).toBeEnabled();
+  await expect(page.locator('[name="scene-layer"][value="lut"]')).toBeChecked();
   await expect(
     page.locator("#scene-method-difference canvas").first(),
   ).toBeVisible();
+  await expect(
+    page.locator("#scene-angular-errors canvas").first(),
+  ).toBeVisible();
+  await page.screenshot({ path: "test-results/scene-lut.png", fullPage: true });
   await page.locator("#thickness").fill("6");
   await expect(page.locator("#scene-lut-status")).toContainText("stale", {
     timeout: 10000,
