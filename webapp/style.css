@@ -835,6 +835,26 @@ h1 {
   border: 1px solid #cce0e9;
   color: #365e71;
 }
+.performance-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: -5px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid #d7e5e8;
+  border-radius: 10px;
+  background: rgba(240, 247, 247, 0.86);
+  color: #526a73;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.performance-note strong {
+  flex: 0 0 auto;
+  color: var(--teal);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .scene-editors {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -18,6 +18,8 @@ The header **Model & assumptions** button opens equations, coordinate convention
 
 Scene Lab and Point Clouds provide the same LUT workflow: generate with progress, save the versioned JSON, or load a compatible LUT created earlier. Imported tables are checked against the current enclosure configuration before use.
 
+Displayed analytical and LUT performance values measure correction kernels only inside a JavaScript Web Worker. LUT generation, validation, metric calculation, rendering and export are excluded. The app reports observed browser performance rather than assuming a fixed speed-up; short runs may be affected by timer resolution and browser scheduling.
+
 The browser's normal LUT workflow covers the complete 0°–180° XZ and YZ domains and asks only for angular resolution. **Advanced domain** exposes custom limits when a known sensor field of view should use a smaller table. Analytical correction offers direction-only, geometric-path and optical-path range interpretations in both Point Clouds and Scene Lab; optical path is the default for ToF data, while direction only is the paper-style LUT reference. The exported report records the selected model.
 
 Use **Save PNG** in a view for image export. Plots support orbit/pan/zoom; each relevant card has an expanded dialog. The designer exports curve CSVs, the atlas exports map CSVs, and scene/point-cloud workspaces export clouds and reports. Config JSON is compatible with the Python CLI. Scene JSON is a separate app format containing objects and sensor stations, not a general 3D mesh format.

@@ -252,8 +252,12 @@ export function simulate(
   });
   if (lut) {
     const started = performance.now();
+    const lutCorrections = result.rawLocal.map((raw) =>
+      correctPointLUT(raw, lut),
+    );
+    result.lutTimeMs = performance.now() - started;
     result.rawLocal.forEach((raw, index) => {
-      const corrected = correctPointLUT(raw, lut),
+      const corrected = lutCorrections[index],
         directionReference = correct(raw, c, "direction_only", c.nInside);
       result.lutStatus.push(corrected.status);
       if (!corrected.valid) return;
@@ -281,7 +285,6 @@ export function simulate(
           angle(corrected.point, directionReference.point),
         );
     });
-    result.lutTimeMs = performance.now() - started;
     result.lutRejected = result.lutStatus.filter(
       (status) => status !== "ok",
     ).length;

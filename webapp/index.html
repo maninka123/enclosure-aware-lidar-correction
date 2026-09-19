@@ -631,6 +631,19 @@
             sensor pose.
           </p>
           <div id="cloud-stats" class="stats"></div>
+          <aside
+            class="performance-note"
+            aria-label="Performance measurement note"
+          >
+            <strong>Measured in your browser</strong>
+            <span
+              >Times cover correction only inside a JavaScript Web Worker. LUT
+              generation, validation, plots and exports are excluded. LUT lookup
+              can be substantially faster for large clouds; the measured gain
+              depends on point count, table resolution, browser and
+              hardware.</span
+            >
+          </aside>
           <article class="card">
             <div class="card-head">
               <h2>Point-cloud comparison</h2>
@@ -640,7 +653,7 @@
                   aria-label="Point-cloud comparison view"
                 >
                   <option value="overlay">Analytical + LUT overlay</option>
-                  <option value="side">Analytical / LUT side by side</option>
+                  <option value="side">Analytical | LUT side by side</option>
                   <option value="difference">Method difference map</option>
                   <option value="raw">Raw</option>
                   <option value="analytical">Analytical corrected</option>
@@ -934,6 +947,19 @@
             intersection is returned.
           </p>
           <div id="scene-stats" class="stats"></div>
+          <aside
+            class="performance-note"
+            aria-label="Performance measurement note"
+          >
+            <strong>Correction-only timing</strong>
+            <span
+              >Analytical and LUT times measure only their correction kernels in
+              a JavaScript Web Worker. LUT generation, interpolation validation,
+              error metrics and rendering are excluded. LUT lookup is usually
+              faster for larger point sets; very small runs can be dominated by
+              timer resolution and browser scheduling.</span
+            >
+          </aside>
           <p class="notice scene-method-note">
             <strong>Correction input:</strong> the collected, enclosure-affected
             sensor-frame point cloud. Synthetic ground truth is not supplied to

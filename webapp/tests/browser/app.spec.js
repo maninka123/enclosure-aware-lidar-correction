@@ -101,6 +101,9 @@ test("cloud correction, downloads and stale result protection", async ({
   await page.goto("/#cloud");
   await expect(page.locator("#cloud-range-model option")).toHaveCount(3);
   await expect(page.locator("#cloud-range-model")).toHaveValue("optical_path");
+  await expect(page.locator("#cloud .performance-note")).toContainText(
+    "Times cover correction only",
+  );
   await page.locator("#cloud-range-model").selectOption("direction_only");
   await expect(page.locator("#range-note")).toContainText(
     "analytical reference used to validate the LUT",
@@ -136,6 +139,9 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   await page.goto("/#scene");
   await expect(page.locator("#scene-range-model option")).toHaveCount(3);
   await expect(page.locator("#scene-range-model")).toHaveValue("optical_path");
+  await expect(page.locator("#scene .performance-note")).toContainText(
+    "correction kernels",
+  );
   await expect(page.locator('[name="scene-layer"][value="raw"]')).toBeChecked();
   await expect(
     page.locator('[name="scene-layer"][value="analytical"]'),
@@ -458,6 +464,9 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   });
   await expect(page.locator("#scene-stats")).toContainText("LUT 3D RMSE");
   await expect(page.locator("#scene-stats")).toContainText("angular RMS");
+  await expect(page.locator("#scene-stats")).toContainText(
+    "Correction time: analytical | LUT",
+  );
   await expect(page.locator('[name="scene-layer"][value="lut"]')).toBeEnabled();
   await expect(page.locator('[name="scene-layer"][value="lut"]')).toBeChecked();
   await expect(

@@ -279,8 +279,8 @@ async function render() {
         `Dome centre: (${coordinates(config.center)}) mm. LiDAR source: (${coordinates(config.origin)}) mm. Arrows show the rotated sensor axes; the grid uses enclosure coordinates.`;
       stats("designer-stats", [
         [
-          "Inner / outer radius",
-          `${fmt(config.radius * 1000, 1)} / ${fmt((config.radius + config.thickness) * 1000, 1)}`,
+          "Inner | outer radius",
+          `${fmt(config.radius * 1000, 1)} | ${fmt((config.radius + config.thickness) * 1000, 1)}`,
           "mm",
         ],
         [
@@ -669,8 +669,8 @@ function lutValidationStats() {
     ["Resolution", fmt(v.resolution_deg, 3), "deg"],
     ["Grid nodes", v.cells.toLocaleString(), ""],
     [
-      "Valid / invalid",
-      `${v.valid_cells.toLocaleString()} / ${v.invalid_cells.toLocaleString()}`,
+      "Valid | invalid",
+      `${v.valid_cells.toLocaleString()} | ${v.invalid_cells.toLocaleString()}`,
       "",
     ],
     ["Generation", fmt(v.generation_time_s, 3), "s"],
@@ -679,8 +679,8 @@ function lutValidationStats() {
     ["Validation P95", fmt(v.p95_angular_error_deg, 6), "deg"],
     ["Validation maximum", fmt(v.max_angular_error_deg, 6), "deg"],
     [
-      "Equivalent RMS at 1 / 5 / 10 m",
-      `${fmt(v.equivalent_rms_position_error_mm_at_1m, 3)} / ${fmt(v.equivalent_rms_position_error_mm_at_5m, 3)} / ${fmt(v.equivalent_rms_position_error_mm_at_10m, 3)}`,
+      "Equivalent RMS at 1 | 5 | 10 m",
+      `${fmt(v.equivalent_rms_position_error_mm_at_1m, 3)} | ${fmt(v.equivalent_rms_position_error_mm_at_5m, 3)} | ${fmt(v.equivalent_rms_position_error_mm_at_10m, 3)}`,
       "mm",
     ],
   ]);
@@ -1068,8 +1068,8 @@ function drawCloud() {
     ["Valid analytical", r.analyticalValid.toLocaleString(), ""],
     ["Valid LUT", r.lutValid.toLocaleString(), ""],
     [
-      "Rejected analytical / LUT",
-      `${r.total - r.analyticalValid} / ${r.total - r.lutValid}`,
+      "Rejected analytical | LUT",
+      `${r.total - r.analyticalValid} | ${r.total - r.lutValid}`,
       "",
     ],
     ["Analytical statuses", counts(r.analyticalCounts), ""],
@@ -1091,11 +1091,11 @@ function drawCloud() {
       "Method comparison, not ground-truth error",
     ],
     ["RMS method difference", fmt(m.rms, 3), "mm"],
-    ["Median / P95", `${fmt(m.median, 3)} / ${fmt(m.p95, 3)}`, "mm"],
+    ["Median | P95", `${fmt(m.median, 3)} | ${fmt(m.p95, 3)}`, "mm"],
     ["Maximum method difference", fmt(m.max, 3), "mm"],
     ["Mean angular difference", fmt(a.mean, 6), "deg"],
-    ["Analytical runtime", fmt(rt.analytical_ms, 2), "ms"],
-    ["LUT runtime", fmt(rt.lut_ms, 2), "ms"],
+    ["Analytical correction time", fmt(rt.analytical_ms, 2), "ms"],
+    ["LUT correction time", fmt(rt.lut_ms, 2), "ms"],
     [
       "Analytical throughput",
       fmt(rt.analytical_points_per_second, 0),
@@ -1489,18 +1489,18 @@ function drawScene() {
         "Synthetic ground-truth error",
       ],
       [
-        "Raw / analytical / LUT mean",
-        `${fmt(raw.mean, 3)} / ${fmt(analyticalMetric.mean, 3)} / ${fmt(lutMetric.mean, 3)}`,
+        "Raw | analytical | LUT mean",
+        `${fmt(raw.mean, 3)} | ${fmt(analyticalMetric.mean, 3)} | ${fmt(lutMetric.mean, 3)}`,
         "mm",
       ],
       [
-        "Raw / analytical / LUT P95",
-        `${fmt(raw.p95, 3)} / ${fmt(analyticalMetric.p95, 3)} / ${fmt(lutMetric.p95, 3)}`,
+        "Raw | analytical | LUT P95",
+        `${fmt(raw.p95, 3)} | ${fmt(analyticalMetric.p95, 3)} | ${fmt(lutMetric.p95, 3)}`,
         "mm",
       ],
       [
-        "Raw / analytical / LUT maximum",
-        `${fmt(raw.max, 3)} / ${fmt(analyticalMetric.max, 3)} / ${fmt(lutMetric.max, 3)}`,
+        "Raw | analytical | LUT maximum",
+        `${fmt(raw.max, 3)} | ${fmt(analyticalMetric.max, 3)} | ${fmt(lutMetric.max, 3)}`,
         "mm",
       ],
       [
@@ -1515,14 +1515,14 @@ function drawScene() {
         "deg",
       ],
       [
-        "Raw / analytical / LUT angular RMS",
-        `${fmt(r.metrics.raw_angular.rms, 5)} / ${fmt(r.metrics.analytical_angular.rms, 5)} / ${fmt(r.metrics.lut_angular.rms, 5)}`,
+        "Raw | analytical | LUT angular RMS",
+        `${fmt(r.metrics.raw_angular.rms, 5)} | ${fmt(r.metrics.analytical_angular.rms, 5)} | ${fmt(r.metrics.lut_angular.rms, 5)}`,
         "deg",
         "Angular error against synthetic truth",
       ],
       [
-        "Analytical / LUT runtime",
-        `${fmt(r.analyticalTimeMs, 2)} / ${fmt(r.lutTimeMs, 2)}`,
+        "Correction time: analytical | LUT",
+        `${fmt(r.analyticalTimeMs, 2)} | ${fmt(r.lutTimeMs, 2)}`,
         "ms",
       ],
       [
@@ -1531,8 +1531,8 @@ function drawScene() {
         "×",
       ],
       [
-        "Returns / misses / ray rejected",
-        `${r.truth.length} / ${r.missed} / ${r.rejected}`,
+        "Returns | misses | ray rejected",
+        `${r.truth.length} | ${r.missed} | ${r.rejected}`,
         "",
       ],
       ["LUT rejected", r.lutRejected ?? "—", "points"],
