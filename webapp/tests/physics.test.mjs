@@ -172,13 +172,19 @@ test("3D dome centre and sensor source retain independent coordinates", async ()
 });
 
 test("LUT angle convention round-trips valid quadrants", () => {
+  assert.deepEqual(anglesToDirection(0, 90), [1, 0, 0]);
+  assert.ok(angle(anglesToDirection(90, 90), [0, 0, 1]) < 1e-12);
+  assert.ok(angle(anglesToDirection(180, 90), [-1, 0, 0]) < 1e-12);
+  assert.deepEqual(directionToAngles([0, 0, 1]), [90, 90]);
   for (const direction of [
     [1, 2, 3],
     [-1, 2, 3],
     [-1, -2, 3],
     [1, -2, 3],
-    [1, 2, -3],
-    [-1, -2, -3],
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
   ]) {
     const restored = anglesToDirection(...directionToAngles(direction));
     assert.ok(angle(restored, direction) < 1e-12);
@@ -190,30 +196,30 @@ test("LUT nodes, bilinear lookup, radius preservation and invalid domain", async
     settings = {
       ...defaultLUTSettings(),
       resolution_deg: 5,
-      xz_min_deg: -30,
-      xz_max_deg: 30,
-      yz_min_deg: -30,
-      yz_max_deg: 30,
+      xz_min_deg: 60,
+      xz_max_deg: 120,
+      yz_min_deg: 60,
+      yz_max_deg: 120,
     },
     lut = await generateLUT(c, settings);
-  const node = anglesToDirection(10, -5),
+  const node = anglesToDirection(100, 85),
     analytical = trace(mv(c.rotation, node), c),
     found = lookupDirection(node, lut);
   assert.equal(found.valid, true);
   assert.ok(
     angle(found.direction, mv(transpose(c.rotation), analytical.exit)) < 1e-10,
   );
-  const raw = mul(anglesToDirection(3.2, -7.4), 4.2),
+  const raw = mul(anglesToDirection(93.2, 82.6), 4.2),
     corrected = correctPointLUT(raw, lut);
   assert.equal(corrected.valid, true);
   assert.ok(Math.abs(norm(corrected.point) - norm(raw)) < 1e-12);
   assert.equal(
-    lookupDirection(anglesToDirection(31, 0), lut).status,
+    lookupDirection(anglesToDirection(121, 90), lut).status,
     "outside_lut_domain",
   );
   lut.valid[0] = 0;
   assert.equal(
-    lookupDirection(anglesToDirection(-29, -29), lut).status,
+    lookupDirection(anglesToDirection(61, 61), lut).status,
     "invalid_interpolation_neighbours",
   );
 });
@@ -223,10 +229,10 @@ test("LUT import checks configuration and cache signature", async () => {
     lut = await generateLUT(c, {
       ...defaultLUTSettings(),
       resolution_deg: 10,
-      xz_min_deg: -20,
-      xz_max_deg: 20,
-      yz_min_deg: -20,
-      yz_max_deg: 20,
+      xz_min_deg: 70,
+      xz_max_deg: 110,
+      yz_min_deg: 70,
+      yz_max_deg: 110,
     }),
     data = serializeLUT(lut),
     restored = await deserializeLUT(data, c);
@@ -236,7 +242,7 @@ test("LUT import checks configuration and cache signature", async () => {
     /incompatible/,
   );
   assert.throws(
-    () => validateLUTSettings({ ...data.settings, xz_max_deg: 21 }),
+    () => validateLUTSettings({ ...data.settings, xz_max_deg: 111 }),
     /divisible/,
   );
 });
@@ -245,10 +251,10 @@ test("Scene LUT converges toward analytical direction correction", async () => {
   const c = baseline(),
     settings = {
       ...defaultLUTSettings(),
-      xz_min_deg: -25,
-      xz_max_deg: 25,
-      yz_min_deg: -25,
-      yz_max_deg: 25,
+      xz_min_deg: 65,
+      xz_max_deg: 115,
+      yz_min_deg: 65,
+      yz_max_deg: 115,
     },
     coarse = await generateLUT(c, { ...settings, resolution_deg: 5 }),
     fine = await generateLUT(c, { ...settings, resolution_deg: 1 }),

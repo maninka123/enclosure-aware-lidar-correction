@@ -4,10 +4,10 @@
   "sensor_to_dome_rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
   "lut": {
     "resolution_deg": 0.1,
-    "xz_min_deg": -32.5,
-    "xz_max_deg": 32.5,
-    "yz_min_deg": -32.5,
-    "yz_max_deg": 32.5,
+    "xz_min_deg": 50.0,
+    "xz_max_deg": 130.0,
+    "yz_min_deg": 50.0,
+    "yz_max_deg": 130.0,
     "interpolation": "bilinear"
   }
 }

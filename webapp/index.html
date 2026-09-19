@@ -89,21 +89,21 @@
       </button>
       <button
         role="tab"
-        id="tab-cloud"
-        aria-controls="cloud"
-        data-tab="cloud"
-        aria-selected="false"
-      >
-        03 <span>Point clouds</span>
-      </button>
-      <button
-        role="tab"
         id="tab-scene"
         aria-controls="scene"
         data-tab="scene"
         aria-selected="false"
       >
-        04 <span>Scene lab</span>
+        03 <span>Scene lab</span>
+      </button>
+      <button
+        role="tab"
+        id="tab-cloud"
+        aria-controls="cloud"
+        data-tab="cloud"
+        aria-selected="false"
+      >
+        04 <span>Point clouds</span>
       </button>
     </nav>
     <button id="toggle-controls" class="mobile-controls">
@@ -301,32 +301,32 @@
                 <strong>Adjust while viewing</strong>
               </div>
               <label
-                >Polar tilt from sensor +Z
-                <small>in the plane selected by azimuth</small>
-                <output id="polar-out">25°</output
+                >XZ beam angle
+                <small>0° +X · 90° straight +Z · 180° −X</small>
+                <output id="beam-xz-out">65°</output
                 ><input
-                  id="polar"
+                  id="beam-xz-angle"
                   type="range"
                   min="0"
                   max="180"
-                  value="25"
+                  value="65"
                   step=".5"
               /></label>
               <label
-                >Azimuth in sensor XY
-                <small>from +X toward +Y about +Z</small>
-                <output id="azimuth-out">0°</output
+                >YZ beam angle
+                <small>0° +Y · 90° straight +Z · 180° −Y</small>
+                <output id="beam-yz-out">90°</output
                 ><input
-                  id="azimuth"
+                  id="beam-yz-angle"
                   type="range"
                   min="0"
-                  max="360"
-                  value="0"
-                  step="1"
+                  max="180"
+                  value="90"
+                  step=".5"
               /></label>
               <div class="beam-plane-readout">
-                <span>XZ · atan2(X,Z) <b id="beam-xz">—</b></span>
-                <span>YZ · atan2(Y,Z) <b id="beam-yz">—</b></span>
+                <span>Sensor-plane convention</span>
+                <b>90° / 90° is straight ahead</b>
               </div>
               <label class="beam-length"
                 >Ray after shell <em>mm</em
@@ -535,33 +535,46 @@
                 >XZ minimum °<input
                   id="lut-xz-min"
                   type="number"
-                  value="-32.5"
+                  min="0"
+                  max="180"
+                  value="50"
                   step="0.5"
               /></label>
               <label
                 >XZ maximum °<input
                   id="lut-xz-max"
                   type="number"
-                  value="32.5"
+                  min="0"
+                  max="180"
+                  value="130"
                   step="0.5"
               /></label>
               <label
                 >YZ minimum °<input
                   id="lut-yz-min"
                   type="number"
-                  value="-32.5"
+                  min="0"
+                  max="180"
+                  value="50"
                   step="0.5"
               /></label>
               <label
                 >YZ maximum °<input
                   id="lut-yz-max"
                   type="number"
-                  value="32.5"
+                  min="0"
+                  max="180"
+                  value="130"
                   step="0.5"
               /></label>
               <button id="generate-lut" class="primary">Generate LUT</button>
               <button id="cancel-lut" class="quiet" hidden>Cancel</button>
             </div>
+            <p class="micro">
+              XZ and YZ use the sensor-plane convention: 0° is the positive
+              lateral axis, 90° is sensor +Z, and 180° is the negative lateral
+              axis.
+            </p>
             <progress id="lut-progress" max="1" value="0" hidden></progress>
             <div id="lut-stats" class="stats"></div>
             <div class="actions lut-files">
@@ -1080,9 +1093,12 @@
           <p>
             All physics runs in metres. Enclosure controls use millimetres;
             scene controls use metres. Sensor +Z is forward. Roll, pitch, yaw
-            form the right-handed active rotation Rz Ry Rx. In a planar sweep,
-            0° is the first named axis and 90° is the second: XZ sweeps from +X
-            to +Z; YZ from +Y to +Z; XY from +X to +Y.
+            form the right-handed active rotation Rz Ry Rx. Selected-beam and
+            LUT XZ/YZ angles use atan2(Z,X) and atan2(Z,Y): 0° is the positive
+            lateral axis, 90° is sensor +Z, and 180° is the negative lateral
+            axis. Deflection sweeps use 0° as the first named axis and 90° as
+            the second: XZ sweeps from +X to +Z; YZ from +Y to +Z; XY from +X to
+            +Y.
           </p>
           <p>
             Only the upper shell (relative to the centre Z) is active in

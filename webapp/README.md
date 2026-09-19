@@ -10,8 +10,8 @@ A static browser application for the same concentric spherical-shell model as th
 |---|---|
 | Enclosure & beam | Geometry and materials, selected-beam controls, true 3D surface angles, projected paths, interface zoom, source axes, forward direction and comparison curves |
 | Deflection atlas | Selectable XY/XZ/YZ sweeps in the designer, 0–180° or 0–360° ranges, full-sphere direction colours and azimuth/polar heatmap |
-| Point clouds | Analytical/LUT/both correction, dynamic LUT validation and import/export, selectable overlays and difference maps, measured performance, attribute-preserving CSV/PCD output |
 | Scene lab | Raw, analytical and LUT reconstruction against synthetic truth; editable targets; up to eight sensor stations; error/range/angle plots and JSON scene import/export |
+| Point clouds | Analytical/LUT/both correction, dynamic LUT validation and import/export, selectable overlays and difference maps, measured performance, attribute-preserving CSV/PCD output |
 
 
 The header **Model & assumptions** button opens equations, coordinate conventions, material sources, paper citation and the simplified-model scope in a dialog.
@@ -43,7 +43,7 @@ The app source is in `src/`; the build writes only to `dist/`, which is ignored 
 
 - Controls use mm for enclosure geometry, degrees for angles, and metres for scene positions. All numerical tracing uses metres.
 - Sensor +Z is forward. Active right-handed rotations use `Rz(yaw) Ry(pitch) Rx(roll)`. Imported Python matrices are converted to equivalent Euler angles for editing.
-- LUT angles use `theta_xz = atan2(X,Z)` and `theta_yz = atan2(Y,Z)` in the sensor frame. The app bilinearly interpolates valid exit vectors and normalizes the result.
+- Selected-beam and LUT angles use `theta_xz = atan2(Z,X)` and `theta_yz = atan2(Z,Y)` in the sensor frame. Both run from 0° to 180°, with 90° pointing straight along sensor +Z. The app bilinearly interpolates valid exit vectors and normalizes the result.
 - Planar curves report the full 3D angle between incident and exit directions, not an independent two-dimensional approximation. The frame selector determines whether the input plane uses enclosure or sensor axes.
 - The upper-shell aperture is measured relative to the dome centre Z. Invalid directions and total internal reflection produce gaps, not interpolated corrections.
 - Clouds must be original, local sensor-frame XYZ. A registered map needs per-acquisition pose handling outside this app. CSV fields are named `x,y,z`; additional columns are retained in CSV output.

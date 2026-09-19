@@ -4,7 +4,6 @@ import {
   rotation,
   mv,
   trace,
-  beamDirection,
   angle,
   norm,
   sub,
@@ -13,7 +12,7 @@ import {
   fromPython,
   toPython,
 } from "./physics.js";
-import { directionToAngles } from "./lut.js";
+import { anglesToDirection } from "./lut.js";
 import { materials, indexFor } from "./materials.js";
 import {
   setupLibrary,
@@ -216,10 +215,12 @@ function updateMaterial() {
   }
 }
 function rayNow() {
-  return trace(
-    mv(config.rotation, beamDirection(val("azimuth"), val("polar"))),
-    config,
+  const direction = anglesToDirection(
+    val("beam-xz-angle"),
+    val("beam-yz-angle"),
   );
+  if (!direction) throw Error("Selected XZ/YZ beam angles are invalid.");
+  return trace(mv(config.rotation, direction), config);
 }
 function enableCloudExport(enabled) {
   for (const id of ["export-pcd", "export-csv", "export-report"])
@@ -259,13 +260,8 @@ async function render() {
     config = readConfig();
     ray = rayNow();
     $("live-state").textContent = "LIVE";
-    $("polar-out").value = `${val("polar")}°`;
-    $("azimuth-out").value = `${val("azimuth")}°`;
-    const selectedAngles = directionToAngles(
-      beamDirection(val("azimuth"), val("polar")),
-    );
-    $("beam-xz").textContent = `${fmt(selectedAngles[0], 2)}°`;
-    $("beam-yz").textContent = `${fmt(selectedAngles[1], 2)}°`;
+    $("beam-xz-out").value = `${val("beam-xz-angle")}°`;
+    $("beam-yz-out").value = `${val("beam-yz-angle")}°`;
     const length = val("raylength") / 1000;
     if (!Number.isFinite(length) || length <= 0)
       throw Error("Display ray length must be positive.");
@@ -308,7 +304,7 @@ async function render() {
       $("designer-section-title").textContent = `${a} ray path`;
       $("designer-section-b-title").textContent = `${b} ray path`;
       await Promise.all([
-        charts.geometry("geometry", config, ray, length),
+        charts.geometry("geometry", config, ray, length, false),
         charts.beam2d("designer-section", config, ray, length, a),
         charts.beam2d("designer-section-b", config, ray, length, b),
       ]);
@@ -409,7 +405,7 @@ document
     )
       el.addEventListener("input", changed);
   });
-for (const id of ["polar", "azimuth", "raylength"])
+for (const id of ["beam-xz-angle", "beam-yz-angle", "raylength"])
   $(id).addEventListener("input", changed);
 ["plane-a", "plane-b", "sweep-range", "sweep-frame"].forEach((id) =>
   $(id).addEventListener("change", () => render()),

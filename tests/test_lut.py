@@ -24,12 +24,12 @@ from dome_correction.model import angle_between_deg, trace_rays
 
 class LUTTests(unittest.TestCase):
     def settings(self, resolution=5):
-        return LUTSettings(resolution, -30, 30, -30, 30)
+        return LUTSettings(resolution, 60, 120, 60, 120)
 
     def test_angle_roundtrip_preserves_valid_quadrants(self):
         directions = np.asarray([
             [1, 2, 3], [-1, 2, 3], [-1, -2, 3], [1, -2, 3],
-            [1, 2, -3], [-1, 2, -3], [-1, -2, -3], [1, -2, -3],
+            [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0],
         ], float)
         angles = direction_to_angles(directions)
         restored, valid = angles_to_direction(angles[:, 0], angles[:, 1])
@@ -93,13 +93,13 @@ class LUTTests(unittest.TestCase):
         lut = generate_lut(dome, origin_m=origin,
                            sensor_to_dome_rotation=rotation,
                            settings=self.settings(), validate=False)
-        inside, _ = angles_to_direction([0], [0])
-        outside, _ = angles_to_direction([31], [0])
+        inside, _ = angles_to_direction([90], [90])
+        outside, _ = angles_to_direction([121], [90])
         self.assertTrue(lookup_directions(inside, lut)[1][0])
         self.assertEqual(lookup_directions(outside, lut)[2][0],
                          "outside_lut_domain")
         lut.valid[0, 0] = False
-        corner, _ = angles_to_direction([-29], [-29])
+        corner, _ = angles_to_direction([61], [61])
         self.assertEqual(lookup_directions(corner, lut)[2][0],
                          "invalid_interpolation_neighbours")
 

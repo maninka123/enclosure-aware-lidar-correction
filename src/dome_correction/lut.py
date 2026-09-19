@@ -1,7 +1,8 @@
 """Paper-style angular lookup tables generated from the analytical ray tracer.
 
-Angles are signed planar angles in degrees:
-theta_xz = atan2(x, z), theta_yz = atan2(y, z).  The table stores sensor-frame
+Angles are paper-style planar angles in degrees:
+theta_xz = atan2(z, x), theta_yz = atan2(z, y).  Zero and 180 degrees are
+the lateral axis ends and 90 degrees is sensor +Z. The table stores sensor-frame
 exit vectors and bilinearly interpolates those vectors before normalisation.
 Measured point radius is preserved by LUT correction.
 """
@@ -18,16 +19,16 @@ from .correction import Correction, rotation_matrix
 from .model import Dome, angle_between_deg, trace_rays, vectors
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "2.0"
 
 
 @dataclass(frozen=True)
 class LUTSettings:
     resolution_deg: float = 0.1
-    xz_min_deg: float = -45.0
-    xz_max_deg: float = 45.0
-    yz_min_deg: float = -45.0
-    yz_max_deg: float = 45.0
+    xz_min_deg: float = 50.0
+    xz_max_deg: float = 130.0
+    yz_min_deg: float = 50.0
+    yz_max_deg: float = 130.0
     interpolation: str = "bilinear"
 
     def __post_init__(self):
@@ -43,8 +44,8 @@ class LUTSettings:
             raise ValueError("Only bilinear LUT interpolation is supported.")
         for lo, hi in ((self.xz_min_deg, self.xz_max_deg),
                        (self.yz_min_deg, self.yz_max_deg)):
-            if hi - lo > 360:
-                raise ValueError("A LUT angular axis cannot span more than 360 degrees.")
+            if lo < 0 or hi > 180:
+                raise ValueError("LUT plane angles must stay within 0 to 180 degrees.")
         nx = round((self.xz_max_deg-self.xz_min_deg)/self.resolution_deg)
         ny = round((self.yz_max_deg-self.yz_min_deg)/self.resolution_deg)
         if (not np.isclose(nx*self.resolution_deg,
@@ -77,31 +78,41 @@ class AngularLUT:
 
 
 def direction_to_angles(directions):
-    """Return signed XZ/YZ planar angles using atan2, preserving quadrants."""
+    """Return paper-style XZ/YZ angles: 90 degrees is sensor +Z."""
     d = vectors(directions, "directions")
     length = np.linalg.norm(d, axis=1)
     valid = np.isfinite(d).all(axis=1) & np.isfinite(length) & (length > 0)
     unit = np.full_like(d, np.nan)
     np.divide(d, length[:, None], out=unit, where=valid[:, None])
-    angles = np.column_stack((
-        np.rad2deg(np.arctan2(unit[:, 0], unit[:, 2])),
-        np.rad2deg(np.arctan2(unit[:, 1], unit[:, 2])),
-    ))
+    xz = np.rad2deg(np.arctan2(unit[:, 2], unit[:, 0]))
+    yz = np.rad2deg(np.arctan2(unit[:, 2], unit[:, 1]))
+    xz[np.hypot(unit[:, 0], unit[:, 2]) <= 1e-12] = 90.0
+    yz[np.hypot(unit[:, 1], unit[:, 2]) <= 1e-12] = 90.0
+    angles = np.column_stack((xz, yz))
+    valid &= unit[:, 2] >= -1e-12
     angles[~valid] = np.nan
     return angles
 
 
 def angles_to_direction(theta_xz_deg, theta_yz_deg):
-    """Invert the two planar angles away from z=0 and inconsistent hemispheres."""
+    """Invert 0..180 degree plane angles, with 90 degrees along sensor +Z."""
     xz, yz = np.broadcast_arrays(np.asarray(theta_xz_deg, float),
                                  np.asarray(theta_yz_deg, float))
     xr, yr = np.deg2rad(xz), np.deg2rad(yz)
-    cx, cy = np.cos(xr), np.cos(yr)
-    valid = (np.isfinite(xr) & np.isfinite(yr) & (np.abs(cx) > 1e-12)
-             & (np.abs(cy) > 1e-12) & (np.sign(cx) == np.sign(cy)))
-    tx, ty = np.tan(xr), np.tan(yr)
-    z = np.where(valid, np.sign(cx)/np.sqrt(1+tx*tx+ty*ty), np.nan)
-    return np.stack((tx*z, ty*z, z), axis=-1), valid
+    valid = (np.isfinite(xr) & np.isfinite(yr) & (xz >= 0) & (xz <= 180)
+             & (yz >= 0) & (yz <= 180))
+    sx, sy, cx, cy = np.sin(xr), np.sin(yr), np.cos(xr), np.cos(yr)
+    direction = np.stack((cx*sy, cy*sx, sx*sy), axis=-1)
+    length = np.linalg.norm(direction, axis=-1)
+    corners = valid & (length <= 1e-12)
+    fallback = np.stack((cx, cy, np.zeros_like(cx)), axis=-1)
+    direction = np.where(corners[..., None], fallback, direction)
+    length = np.linalg.norm(direction, axis=-1)
+    valid &= length > 0
+    direction = np.divide(direction, length[..., None],
+                          out=np.full_like(direction, np.nan),
+                          where=valid[..., None])
+    return direction, valid
 
 
 def _axis(lo, hi, step):
@@ -326,8 +337,8 @@ def lut_to_dict(lut):
         "lut_hash": lut.lut_hash,
         "coordinate_convention": {
             "frame": "sensor",
-            "theta_xz": "degrees, atan2(x,z)",
-            "theta_yz": "degrees, atan2(y,z)",
+            "theta_xz": "degrees, atan2(z,x); 0=+X, 90=+Z, 180=-X",
+            "theta_yz": "degrees, atan2(z,y); 0=+Y, 90=+Z, 180=-Y",
             "correction": "bilinear exit-vector interpolation; measured radius preserved",
         },
         "settings": asdict(lut.settings),

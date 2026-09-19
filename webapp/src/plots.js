@@ -545,8 +545,8 @@ export function drawLUT(lut) {
           },
         ],
         {
-          xaxis: { title: { text: "XZ input · atan2(X,Z) (deg)" } },
-          yaxis: { title: { text: "YZ input · atan2(Y,Z) (deg)" } },
+          xaxis: { title: { text: "XZ input · atan2(Z,X) (deg)" } },
+          yaxis: { title: { text: "YZ input · atan2(Z,Y) (deg)" } },
         },
       );
   total.fill(NaN);

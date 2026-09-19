@@ -8,6 +8,11 @@ test("combined enclosure and beam designer, materials and atlas", async ({
   await page.goto("/");
   await expect(page.locator("#geometry canvas")).toBeVisible();
   await expect(page.locator("#error")).toBeHidden();
+  await expect(page.locator("#beam-xz-angle")).toHaveValue("65");
+  await expect(page.locator("#beam-yz-angle")).toHaveValue("90");
+  await expect(page.locator("#beam-xz-out")).toHaveText("65°");
+  await page.locator("#beam-xz-angle").fill("90");
+  await expect(page.locator("#beam-xz-out")).toHaveText("90°");
   const designerOrder = await page.evaluate(() => ({
     toolbar: document
       .querySelector("#designer .toolbar")
@@ -346,10 +351,10 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   await expect(page.locator("#lut-panel")).toBeVisible();
   await page.locator("#lut-resolution").selectOption("0.5");
   for (const [id, value] of [
-    ["lut-xz-min", "-35"],
-    ["lut-xz-max", "35"],
-    ["lut-yz-min", "-35"],
-    ["lut-yz-max", "35"],
+    ["lut-xz-min", "55"],
+    ["lut-xz-max", "125"],
+    ["lut-yz-min", "55"],
+    ["lut-yz-max", "125"],
   ])
     await page.locator(`#${id}`).fill(value);
   await page.locator("#generate-lut").click();

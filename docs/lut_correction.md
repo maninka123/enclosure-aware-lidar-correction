@@ -4,14 +4,14 @@ The lookup table is generated from the repository's analytical two-interface sph
 
 ## Coordinates and representation
 
-All table directions are in the local sensor frame, where +Z is forward. The signed coordinates are
+All table directions are in the local sensor frame, where +Z is forward. The paper-style plane coordinates are
 
 ```text
-theta_xz = degrees(atan2(x, z))
-theta_yz = degrees(atan2(y, z))
+theta_xz = degrees(atan2(z, x))
+theta_yz = degrees(atan2(z, y))
 ```
 
-`atan2` preserves quadrants. The implementation provides tested `direction_to_angles` / `directionToAngles` and inverse functions. Internally each valid table node stores the analytical exit unit vector as XYZ. Delta XZ and YZ angles are also stored for inspection and export. Interpolating vectors avoids the discontinuities and ambiguity that arise from treating the two planar angles as independent Euler rotations.
+Each axis runs from 0° to 180°: 0° is its positive lateral axis, 90° is sensor +Z, and 180° is its negative lateral axis. `atan2` preserves quadrants. The implementation provides tested `direction_to_angles` / `directionToAngles` and inverse functions. Internally each valid table node stores the analytical exit unit vector as XYZ. Delta XZ and YZ angles are also stored for inspection and export. Interpolating vectors avoids the discontinuities and ambiguity that arise from treating the two planar angles as independent Euler rotations.
 
 ## Generation and validation
 
@@ -35,7 +35,7 @@ The table hash includes inner radius, wall thickness, dome centre, source origin
 
 ## Import and export
 
-Browser and Python exports use the versioned JSON schema `enclosure-aware-lidar-lut` version `1.0`. The file records the configuration and hash, settings, coordinate convention, generation timestamp, arrays, statuses and validation metrics. Import recalculates the current configuration and LUT signatures before accepting a file.
+Browser and Python exports use the versioned JSON schema `enclosure-aware-lidar-lut` version `2.0`. The file records the configuration and hash, settings, coordinate convention, generation timestamp, arrays, statuses and validation metrics. Import recalculates the current configuration and LUT signatures before accepting a file. Version 2.0 makes the 0°–180° paper convention explicit, so tables exported with the earlier signed convention are rejected rather than misapplied.
 
 Python example:
 

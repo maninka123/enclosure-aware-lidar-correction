@@ -67,6 +67,10 @@ export class Viewer3D {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = false;
     this.controls.screenSpacePanning = true;
+    this.controls.rotateSpeed = 0.72;
+    this.controls.zoomSpeed = 0.9;
+    this.controls.panSpeed = 0.82;
+    this.controls.zoomToCursor = true;
     this.controls.addEventListener("change", () => {
       this.draw();
       this.onCameraChange?.(this);

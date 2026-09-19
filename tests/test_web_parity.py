@@ -17,9 +17,9 @@ class WebParityTests(unittest.TestCase):
         dome = Dome(n_outside=1.333)
         origin = np.array([.01, -.02, .005])
         rotation = np.array([[0., 1, 0], [0, 0, 1], [1, 0, 0]])
-        settings = LUTSettings(resolution_deg=10, xz_min_deg=-20,
-                               xz_max_deg=20, yz_min_deg=-20,
-                               yz_max_deg=20)
+        settings = LUTSettings(resolution_deg=10, xz_min_deg=70,
+                               xz_max_deg=110, yz_min_deg=70,
+                               yz_max_deg=110)
         expected = generate_lut(dome, origin_m=origin,
                                 sensor_to_dome_rotation=rotation,
                                 settings=settings, validate=False)

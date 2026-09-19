@@ -10,7 +10,7 @@ import {
 } from "./physics.js";
 
 export const LUT_SCHEMA = "enclosure-aware-lidar-lut";
-export const LUT_SCHEMA_VERSION = "1.0";
+export const LUT_SCHEMA_VERSION = "2.0";
 export const LUT_STATUSES = [
   "ok",
   "invalid_direction",
@@ -58,10 +58,10 @@ async function digest(value) {
 }
 export const defaultLUTSettings = () => ({
   resolution_deg: 0.1,
-  xz_min_deg: -32.5,
-  xz_max_deg: 32.5,
-  yz_min_deg: -32.5,
-  yz_max_deg: 32.5,
+  xz_min_deg: 50,
+  xz_max_deg: 130,
+  yz_min_deg: 50,
+  yz_max_deg: 130,
   interpolation: "bilinear",
 });
 export function validateLUTSettings(settings) {
@@ -77,8 +77,13 @@ export function validateLUTSettings(settings) {
   if (s.resolution_deg <= 0) throw Error("LUT resolution must be positive.");
   if (s.xz_max_deg <= s.xz_min_deg || s.yz_max_deg <= s.yz_min_deg)
     throw Error("LUT angular maxima must be greater than minima.");
-  if (s.xz_max_deg - s.xz_min_deg > 360 || s.yz_max_deg - s.yz_min_deg > 360)
-    throw Error("A LUT angular axis cannot span more than 360 degrees.");
+  if (
+    s.xz_min_deg < 0 ||
+    s.xz_max_deg > 180 ||
+    s.yz_min_deg < 0 ||
+    s.yz_max_deg > 180
+  )
+    throw Error("LUT plane angles must stay within 0 to 180 degrees.");
   if (s.interpolation !== "bilinear")
     throw Error("Only bilinear LUT interpolation is supported.");
   const nx = Math.round((s.xz_max_deg - s.xz_min_deg) / s.resolution_deg),
@@ -96,28 +101,35 @@ export function validateLUTSettings(settings) {
 export function directionToAngles(direction) {
   if (!direction?.every(Number.isFinite) || !norm(direction)) return [NaN, NaN];
   const d = unit(direction);
+  if (d[2] < -1e-12) return [NaN, NaN];
   return [
-    (Math.atan2(d[0], d[2]) * 180) / Math.PI,
-    (Math.atan2(d[1], d[2]) * 180) / Math.PI,
+    Math.hypot(d[0], d[2]) <= 1e-12
+      ? 90
+      : (Math.atan2(d[2], d[0]) * 180) / Math.PI,
+    Math.hypot(d[1], d[2]) <= 1e-12
+      ? 90
+      : (Math.atan2(d[2], d[1]) * 180) / Math.PI,
   ];
 }
 export function anglesToDirection(thetaXZ, thetaYZ) {
   const x = (thetaXZ * Math.PI) / 180,
-    y = (thetaYZ * Math.PI) / 180,
-    cx = Math.cos(x),
-    cy = Math.cos(y);
+    y = (thetaYZ * Math.PI) / 180;
   if (
     !Number.isFinite(x) ||
     !Number.isFinite(y) ||
-    Math.abs(cx) <= 1e-12 ||
-    Math.abs(cy) <= 1e-12 ||
-    Math.sign(cx) !== Math.sign(cy)
+    thetaXZ < 0 ||
+    thetaXZ > 180 ||
+    thetaYZ < 0 ||
+    thetaYZ > 180
   )
     return null;
-  const tx = Math.tan(x),
-    ty = Math.tan(y),
-    z = Math.sign(cx) / Math.sqrt(1 + tx * tx + ty * ty);
-  return [tx * z, ty * z, z];
+  const sx = Math.sin(x),
+    sy = Math.sin(y),
+    cx = Math.cos(x),
+    cy = Math.cos(y),
+    direction = [cx * sy, cy * sx, sx * sy];
+  if (norm(direction) <= 1e-12) return unit([cx, cy, 0]);
+  return unit(direction);
 }
 const axis = (lo, hi, step) => {
   const count = Math.round((hi - lo) / step);
@@ -353,8 +365,8 @@ export function serializeLUT(lut) {
     lut_hash: lut.lutHash,
     coordinate_convention: {
       frame: "sensor",
-      theta_xz: "degrees, atan2(x,z)",
-      theta_yz: "degrees, atan2(y,z)",
+      theta_xz: "degrees, atan2(z,x); 0=+X, 90=+Z, 180=-X",
+      theta_yz: "degrees, atan2(z,y); 0=+Y, 90=+Z, 180=-Y",
       correction:
         "bilinear exit-vector interpolation; measured radius preserved",
     },

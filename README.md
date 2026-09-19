@@ -85,8 +85,8 @@ import numpy as np
 from dome_correction import Dome, LUTSettings, generate_lut, correct_points_lut
 
 dome = Dome(inner_radius_m=0.074, thickness_m=0.004)
-settings = LUTSettings(resolution_deg=0.25, xz_min_deg=-35, xz_max_deg=35,
-                       yz_min_deg=-35, yz_max_deg=35)
+settings = LUTSettings(resolution_deg=0.25, xz_min_deg=55, xz_max_deg=125,
+                       yz_min_deg=55, yz_max_deg=125)
 lut = generate_lut(dome, origin_m=(-0.02, 0., 0.02445), settings=settings)
 result = correct_points_lut(np.array([[0., 0., 5.]]), lut, dome=dome,
                             origin_m=(-0.02, 0., 0.02445))

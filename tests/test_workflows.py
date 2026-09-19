@@ -51,9 +51,9 @@ class WorkflowTests(unittest.TestCase):
             root = Path(tmp)
             config, raw = root/'config.json', root/'raw.csv'
             data = config_dict(Dome(), [0, 0, 0], np.eye(3))
-            data['lut'] = dict(resolution_deg=10, xz_min_deg=-20,
-                               xz_max_deg=20, yz_min_deg=-20,
-                               yz_max_deg=20, interpolation='bilinear')
+            data['lut'] = dict(resolution_deg=10, xz_min_deg=70,
+                               xz_max_deg=110, yz_min_deg=70,
+                               yz_max_deg=110, interpolation='bilinear')
             config.write_text(json.dumps(data))
             raw.write_text('x,y,z,label\n0,0,5,centre\n.1,0,5,edge\n')
             lut_dir, output = root/'lut', root/'corrected.csv'

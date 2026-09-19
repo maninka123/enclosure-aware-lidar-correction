@@ -40,11 +40,11 @@ Direction-only mode returns `Q.T*(r*d_exit)` instead. It approximates the exit r
 The angular LUT uses that direction-only analytical result as its reference. In the sensor frame,
 
 ```text
-theta_xz = atan2(d_x, d_z)
-theta_yz = atan2(d_y, d_z)
+theta_xz = atan2(d_z, d_x)
+theta_yz = atan2(d_z, d_y)
 ```
 
-The two angles preserve quadrants. A valid pair is converted back to a unit direction through its two tangent ratios and the shared sign of `cos(theta_xz)` and `cos(theta_yz)`. At runtime the four neighbouring exit vectors are bilinearly weighted and normalized. The corrected LUT point is `r*d_lut`, so its radius equals the sensor measurement. Comparing this with analytical `direction_only` measures interpolation error; comparing it with geometric- or optical-path reconstruction measures a difference between range assumptions.
+Each plane angle spans 0°–180°: 0° is the positive lateral axis, 90° is sensor +Z, and 180° is the negative lateral axis. The two angles preserve quadrants and are converted back to one normalized 3D direction. At runtime the four neighbouring exit vectors are bilinearly weighted and normalized. The corrected LUT point is `r*d_lut`, so its radius equals the sensor measurement. Comparing this with analytical `direction_only` measures interpolation error; comparing it with geometric- or optical-path reconstruction measures a difference between range assumptions.
 
 Sensitivity endpoints are 5 m beyond each outer hit, matching the existing script. They are not intersections with a common target plane. The normalized 1 m metric uses baseline endpoint pairs 0.9–1.1 m apart and scales length changes to 1 m; it is not an exact simulated ruler. The synthetic plane experiment separately constructs intersections with the enclosure plane z=5 m and simulates optical ranges.
 
