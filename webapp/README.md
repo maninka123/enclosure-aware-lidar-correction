@@ -18,7 +18,7 @@ The header **Model & assumptions** button opens equations, coordinate convention
 
 Scene Lab and Point Clouds provide the same LUT workflow: generate with progress, save the versioned JSON, or load a compatible LUT created earlier. Imported tables are checked against the current enclosure configuration before use.
 
-The browser's normal LUT workflow covers the complete 0°–180° XZ and YZ domains and asks only for angular resolution. **Advanced domain** exposes custom limits when a known sensor field of view should use a smaller table. Analytical correction uses the full optical-path reconstruction with the configured inside index as its range reference; the exported report records this choice.
+The browser's normal LUT workflow covers the complete 0°–180° XZ and YZ domains and asks only for angular resolution. **Advanced domain** exposes custom limits when a known sensor field of view should use a smaller table. Analytical correction offers direction-only, geometric-path and optical-path range interpretations in both Point Clouds and Scene Lab; optical path is the default for ToF data, while direction only is the paper-style LUT reference. The exported report records the selected model.
 
 Use **Save PNG** in a view for image export. Plots support orbit/pan/zoom; each relevant card has an expanded dialog. The designer exports curve CSVs, the atlas exports map CSVs, and scene/point-cloud workspaces export clouds and reports. Config JSON is compatible with the Python CLI. Scene JSON is a separate app format containing objects and sensor stations, not a general 3D mesh format.
 
@@ -59,7 +59,7 @@ The app source is in `src/`; the build writes only to `dist/`, which is ignored 
 
 The selected station emits an ideal rectangular angular sampling grid. The scene returns the closest positive intersection with an opaque primitive. Rotations apply to boxes and planes; spheres use the X size as radius. Targets have no simulated reflectance, noise, transparency or multipath.
 
-No-enclosure points use straight rays. The enclosure changes the actual hit locations as well as the measured coordinates, so those two clouds are not generally pointwise correspondences. Raw and corrected errors are measured against the same **refracted-hit truth**. Full optical correction uses the same forward model and parameters, so its near-zero error is a consistency check. The reusable physics API retains the other range models for explicit programmatic studies.
+No-enclosure points use straight rays. The enclosure changes the actual hit locations as well as the measured coordinates, so those two clouds are not generally pointwise correspondences. Raw and corrected errors are measured against the same **refracted-hit truth**. Optical-path correction uses the same forward model and parameters, so its near-zero error is a consistency check. Direction-only and geometric-path results intentionally differ because they interpret the reported range differently.
 
 Each station retains its own enclosure configuration and world pose. Only the selected station is simulated/exported at a time; inactive station markers remain visible. Scene clouds are exported in world metres unless the sensor-frame option is chosen. Use the raw sensor-frame export as an input to the correction workspace.
 

@@ -29,7 +29,12 @@ import * as charts from "./plots.js";
 const $ = (id) => document.getElementById(id),
   val = (id) => Number($(id).value),
   fmt = (v, d = 3) => (Number.isFinite(v) ? v.toFixed(d) : "—");
-const ANALYTICAL_RANGE_MODEL = "optical_path";
+const rangeModelLabels = {
+    direction_only: "Direction only (paper-style LUT)",
+    geometric_path: "Geometric path",
+    optical_path: "Optical path (recommended for ToF)",
+  },
+  rangeReference = (mode, c) => (mode === "optical_path" ? c.nInside : null);
 let active = "designer",
   config = baseline(),
   pinned = null,
@@ -848,14 +853,22 @@ $("cloud-file").onchange = async (e) => {
   e.target.value = "";
 };
 function rangeNote() {
-  const method = $("cloud-method").value;
+  const method = $("cloud-method").value,
+    mode = $("cloud-range-model").value;
   $("lut-panel").hidden = method === "analytical";
+  $("cloud-range-model").disabled = method === "lut";
   $("range-note").textContent =
     method === "lut"
       ? "LUT correction preserves each point's measured radius and applies bilinearly interpolated angular correction."
-      : "Analytical correction uses the complete two-interface trace and optical-path reconstruction. The configured inside index is the range reference.";
+      : `Analytical correction uses ${rangeModelLabels[mode]}. ${
+          mode === "optical_path"
+            ? "The configured inside index is the range reference."
+            : mode === "geometric_path"
+              ? "The measured radius is treated as total geometric path length."
+              : "The measured radius is preserved; this is also the analytical reference used to validate the LUT."
+        }`;
 }
-["cloud-unit", "cloud-method"].forEach((id) =>
+["cloud-unit", "cloud-method", "cloud-range-model"].forEach((id) =>
   $(id).addEventListener("input", () => {
     markStale();
     rangeNote();
@@ -865,8 +878,8 @@ $("correct-cloud").onclick = async () => {
   try {
     const c = readConfig(),
       method = $("cloud-method").value,
-      mode = ANALYTICAL_RANGE_MODEL,
-      reference = c.nInside,
+      mode = $("cloud-range-model").value,
+      reference = rangeReference(mode, c),
       factor = val("cloud-unit");
     if (method !== "analytical" && !(await checkLUTCompatibility(c)))
       throw Error("Generate a compatible LUT for the current enclosure first.");
@@ -911,8 +924,8 @@ $("correct-cloud").onclick = async () => {
     const current = JSON.stringify({
       c: readConfig(),
       method: $("cloud-method").value,
-      mode: ANALYTICAL_RANGE_MODEL,
-      reference: readConfig().nInside,
+      mode: $("cloud-range-model").value,
+      reference: rangeReference($("cloud-range-model").value, readConfig()),
       factor: val("cloud-unit"),
       lutHash: currentLUT?.lutHash,
     });
@@ -1205,7 +1218,7 @@ function sceneSnapshot() {
     pose: worldPose(),
     resolution: val("resolution"),
     fov: val("fov"),
-    mode: ANALYTICAL_RANGE_MODEL,
+    mode: $("scene-range-model").value,
     correction_method: $("scene-correction-method").value,
   };
 }
@@ -1284,6 +1297,7 @@ $("object-list").onchange = objectEditor;
   "resolution",
   "fov",
   "scene-correction-method",
+  "scene-range-model",
 ].forEach((id) => $(id).addEventListener("input", sceneEdited));
 $("add-object").onclick = () => {
   if (objects.length >= 30) {
@@ -1344,7 +1358,7 @@ async function runScene() {
     const matched =
       JSON.stringify(snapshot) === JSON.stringify(sceneSnapshot());
     $("scene-status").textContent = matched
-      ? `${sceneResult.truth.length.toLocaleString()} returns · ${sceneResult.rejected} rejected rays · ${sceneResult.missed} misses. Metrics use synthetic refracted-hit truth.`
+      ? `${sceneResult.truth.length.toLocaleString()} returns · ${sceneResult.rejected} rejected rays · ${sceneResult.missed} misses. Analytical: ${rangeModelLabels[snapshot.mode]}. Metrics use synthetic refracted-hit truth.`
       : "Settings changed; updating simulation…";
     for (const id of ["scene-pcd", "scene-csv", "scene-report"])
       $(id).disabled = !matched;
@@ -1755,6 +1769,7 @@ $("load-scene").onchange = async (e) => {
     );
     $("resolution").value = data.resolution;
     $("fov").value = data.fov;
+    $("scene-range-model").value = data.mode;
     $("scene-correction-method").value = data.correction_method || "compare";
     if (data.lut) {
       $("lut-resolution").value = data.lut.resolution_deg;

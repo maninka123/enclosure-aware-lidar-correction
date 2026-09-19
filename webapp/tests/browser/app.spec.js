@@ -82,6 +82,11 @@ test("combined enclosure and beam designer, materials and atlas", async ({
   await expect(page.locator("#model-dialog")).toContainText(
     "not an exact reproduction",
   );
+  await expect(page.locator("#model-dialog")).toContainText(
+    "Direction only (paper-style LUT)",
+  );
+  await expect(page.locator("#model-dialog")).toContainText("Geometric path");
+  await expect(page.locator("#model-dialog")).toContainText("Optical path");
   await page.screenshot({ path: "test-results/model-dialog.png" });
   await page.keyboard.press("Escape");
   await expect(page.locator("#model-dialog")).not.toBeVisible();
@@ -94,6 +99,12 @@ test("cloud correction, downloads and stale result protection", async ({
   page,
 }) => {
   await page.goto("/#cloud");
+  await expect(page.locator("#cloud-range-model option")).toHaveCount(3);
+  await expect(page.locator("#cloud-range-model")).toHaveValue("optical_path");
+  await page.locator("#cloud-range-model").selectOption("direction_only");
+  await expect(page.locator("#range-note")).toContainText(
+    "analytical reference used to validate the LUT",
+  );
   await page.locator("#cloud-file").setInputFiles({
     name: "raw.csv",
     mimeType: "text/csv",
@@ -109,6 +120,13 @@ test("cloud correction, downloads and stale result protection", async ({
   await expect(page.locator("#export-pcd")).toBeDisabled();
   await page.locator("#correct-cloud").click();
   await expect(page.locator("#export-report")).toBeEnabled();
+  const reportDownload = page.waitForEvent("download");
+  await page.locator("#export-report").click();
+  const report = JSON.parse(
+    await readFile(await (await reportDownload).path(), "utf8"),
+  );
+  expect(report.range_model).toBe("direction_only");
+  expect(report.range_reference_index).toBeNull();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: "test-results/cloud.png", fullPage: true });
 });
@@ -116,6 +134,8 @@ test("scene editing, simulation and exact model error", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/#scene");
+  await expect(page.locator("#scene-range-model option")).toHaveCount(3);
+  await expect(page.locator("#scene-range-model")).toHaveValue("optical_path");
   await expect(page.locator('[name="scene-layer"][value="raw"]')).toBeChecked();
   await expect(
     page.locator('[name="scene-layer"][value="analytical"]'),
@@ -361,7 +381,7 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   await page.goto("/#cloud");
   await page.locator("#cloud-method").selectOption("compare");
   await expect(page.locator("#lut-panel")).toBeVisible();
-  await expect(page.locator("#cloud-mode")).toHaveCount(0);
+  await expect(page.locator("#cloud-range-model")).toHaveValue("optical_path");
   await expect(page.locator("#lut-xz-min")).toHaveValue("0");
   await expect(page.locator("#lut-xz-max")).toHaveValue("180");
   await expect(page.locator("#lut-yz-min")).toHaveValue("0");

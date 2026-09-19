@@ -37,6 +37,8 @@ For reciprocal monostatic time-of-flight, the factor of two is already removed b
 
 Direction-only mode returns `Q.T*(r*d_exit)` instead. It approximates the exit ray as originating at the LiDAR source. Independent 2D projected corrections are generally not equivalent to full 3D tracing when the source and ray are outside the chosen plane.
 
+The browser exposes all three range interpretations in Point Clouds and Scene Lab. **Direction only (paper-style LUT)** preserves the measured radius, **geometric path** treats that radius as physical path length, and **optical path (recommended for ToF)** treats it as a range derived from propagation time. Optical path is a starting recommendation rather than a universal choice: the selected model must match the sensor firmware's range convention and the available calibration.
+
 The angular LUT uses that direction-only analytical result as its reference. In the sensor frame,
 
 ```text

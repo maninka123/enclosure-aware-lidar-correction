@@ -495,8 +495,16 @@
                 <option value="lut">LUT</option>
                 <option value="compare">Compare both</option>
               </select></label
-            ><span class="fixed-model-note"
-              ><b>Analytical model</b> Full optical-path reconstruction</span
+            ><label
+              >Analytical range model<select id="cloud-range-model">
+                <option value="direction_only">
+                  Direction only (paper-style LUT)
+                </option>
+                <option value="geometric_path">Geometric path</option>
+                <option value="optical_path" selected>
+                  Optical path (recommended for ToF)
+                </option>
+              </select></label
             ><button id="correct-cloud" class="primary" disabled>
               Apply correction →</button
             ><button id="cancel-cloud" class="quiet" hidden>Cancel</button>
@@ -870,10 +878,17 @@
                   <option value="lut">LUT only</option>
                 </select></label
               >
-              <p class="fixed-model-note">
-                <b>Analytical model</b> Full optical-path reconstruction using
-                the configured inside, wall and outside indices.
-              </p>
+              <label
+                >Analytical range model<select id="scene-range-model">
+                  <option value="direction_only">
+                    Direction only (paper-style LUT)
+                  </option>
+                  <option value="geometric_path">Geometric path</option>
+                  <option value="optical_path" selected>
+                    Optical path (recommended for ToF)
+                  </option>
+                </select></label
+              >
               <div class="scene-lut-state">
                 <span id="scene-lut-status">LUT not generated</span>
                 <div class="lut-action-row">
@@ -1166,11 +1181,16 @@
           </article>
           <article class="card info-card">
             <span class="step-number">03</span>
-            <h2>Recover the endpoint</h2>
+            <h2>Choose the range interpretation</h2>
             <p>
-              Direction-only correction keeps the reported radius. Full path
-              correction starts at the actual outer hit and accounts for travel
-              inside the enclosure.
+              <b>Direction only (paper-style LUT)</b> keeps the measured radius
+              and changes only the outgoing direction.
+              <b>Geometric path</b> treats the measured radius as the total
+              physical distance through the inside medium, wall and outside
+              medium. <b>Optical path</b>
+              reconstructs the endpoint from the time-of-flight optical length
+              and is the recommended starting point for ToF LiDAR when the
+              sensor's range convention and refractive indices are known.
             </p>
             <div class="equation">
               P = P<sub>outer</sub> + L<sub>outside</sub> d<sub>exit</sub>
@@ -1178,7 +1198,8 @@
             <p>
               Optical mode assumes n<sub>ref</sub> r = Σ nᵢ Lᵢ. A sensor’s
               reported time-of-flight range already includes the round-trip
-              factor; do not halve it again.
+              factor; do not halve it again. There is no universal best option:
+              select the model that matches how the sensor produced its range.
             </p>
           </article>
           <article class="card info-card">
