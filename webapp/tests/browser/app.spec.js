@@ -374,7 +374,13 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   await expect(page.locator("#lut-status")).toContainText("LUT ready", {
     timeout: 30000,
   });
+  await expect(page.locator("#lut-progress-output")).toHaveText("100%");
   await expect(page.locator("#lut-total canvas").first()).toBeVisible();
+  await page.locator("#lut-panel [data-open-lut-info]").click();
+  await expect(page.locator("#lut-info-dialog")).toContainText(
+    "bilinear interpolation",
+  );
+  await page.locator("#close-lut-info").click();
   await page.locator("#cloud-file").setInputFiles({
     name: "raw.csv",
     mimeType: "text/csv",
@@ -411,13 +417,20 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   await page.screenshot({ path: "test-results/lut-cloud.png", fullPage: true });
   const lutDownload = page.waitForEvent("download");
   await page.locator("#export-lut").click();
-  expect((await lutDownload).suggestedFilename()).toBe(
-    "enclosure-angular-lut.json",
-  );
+  const savedLUT = await lutDownload;
+  expect(savedLUT.suggestedFilename()).toBe("enclosure-angular-lut.json");
+  const lutJSON = await readFile(await savedLUT.path());
+  await page.locator("#import-lut").setInputFiles({
+    name: "saved-lut.json",
+    mimeType: "application/json",
+    buffer: lutJSON,
+  });
+  await expect(page.locator("#lut-status")).toContainText("imported");
   await page.getByRole("tab", { name: /Scene lab/ }).click();
   await page.locator("#scene-auto").uncheck();
   await page.locator("#scene-generate-lut").click();
   await expect(page.locator("#scene-correction-method")).toHaveValue("compare");
+  await expect(page.locator("#scene-lut-progress-output")).toHaveText("100%");
   await expect(page.locator("#scene-status")).toContainText("returns", {
     timeout: 30000,
   });
@@ -431,6 +444,14 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   await expect(
     page.locator("#scene-angular-errors canvas").first(),
   ).toBeVisible();
+  await expect(page.locator("#scene-export-lut")).toBeEnabled();
+  await page.locator("#scene-import-lut").setInputFiles({
+    name: "saved-lut.json",
+    mimeType: "application/json",
+    buffer: lutJSON,
+  });
+  await expect(page.locator("#scene-lut-status")).toContainText("imported");
+  await expect(page.locator("#scene-status")).toContainText("returns");
   await page.screenshot({ path: "test-results/scene-lut.png", fullPage: true });
   await page.locator("#thickness").fill("6");
   await expect(page.locator("#scene-lut-status")).toContainText("stale", {

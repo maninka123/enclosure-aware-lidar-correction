@@ -567,24 +567,34 @@
                   value="130"
                   step="0.5"
               /></label>
-              <button id="generate-lut" class="primary">Generate LUT</button>
-              <button id="cancel-lut" class="quiet" hidden>Cancel</button>
             </div>
-            <p class="micro">
-              XZ and YZ use the sensor-plane convention: 0° is the positive
-              lateral axis, 90° is sensor +Z, and 180° is the negative lateral
-              axis.
+            <p class="lut-convention">
+              Sensor-plane domain · 0° positive lateral axis · 90° +Z forward ·
+              180° negative lateral axis
             </p>
-            <progress id="lut-progress" max="1" value="0" hidden></progress>
-            <div id="lut-stats" class="stats"></div>
-            <div class="actions lut-files">
+            <div class="lut-action-row lut-files">
+              <button id="generate-lut" class="primary">Generate LUT</button>
               <button id="export-lut" class="secondary" disabled>
-                ↓ Export LUT JSON
+                ↓ Save LUT
               </button>
               <label class="file-button"
-                >↑ Import LUT<input id="import-lut" type="file" accept=".json"
+                >↑ Load LUT<input id="import-lut" type="file" accept=".json"
               /></label>
+              <button type="button" class="quiet" data-open-lut-info>
+                What is a LUT?
+              </button>
+              <button id="cancel-lut" class="quiet" hidden>Cancel</button>
             </div>
+            <div id="lut-progress-wrap" class="lut-progress-row" hidden>
+              <progress
+                id="lut-progress"
+                max="1"
+                value="0"
+                aria-label="LUT generation progress"
+              ></progress>
+              <output id="lut-progress-output">0%</output>
+            </div>
+            <div id="lut-stats" class="stats"></div>
             <div id="lut-views" class="grid two" hidden>
               <article class="card">
                 <div class="card-head"><h3>Δ XZ angle</h3></div>
@@ -875,9 +885,35 @@
               >
               <div class="scene-lut-state">
                 <span id="scene-lut-status">LUT not generated</span>
-                <button id="scene-generate-lut" type="button">
-                  Generate LUT
-                </button>
+                <div class="lut-action-row">
+                  <button id="scene-generate-lut" type="button" class="primary">
+                    Generate LUT
+                  </button>
+                  <button id="scene-export-lut" type="button" disabled>
+                    ↓ Save
+                  </button>
+                  <label class="file-button"
+                    >↑ Load<input
+                      id="scene-import-lut"
+                      type="file"
+                      accept=".json"
+                  /></label>
+                  <button type="button" class="quiet" data-open-lut-info>
+                    What is LUT?
+                  </button>
+                  <button id="scene-cancel-lut" class="quiet" hidden>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+              <div id="scene-lut-progress-wrap" class="lut-progress-row" hidden>
+                <progress
+                  id="scene-lut-progress"
+                  max="1"
+                  value="0"
+                  aria-label="Scene LUT generation progress"
+                ></progress>
+                <output id="scene-lut-progress-output">0%</output>
               </div>
               <button id="simulate" class="primary full">
                 Simulate scene →</button
@@ -1259,6 +1295,39 @@
         <p id="material-save-error" role="alert"></p>
         <button type="submit" class="primary">Save and use material</button>
       </form>
+    </dialog>
+    <dialog
+      id="lut-info-dialog"
+      class="compact-dialog"
+      aria-labelledby="lut-info-title"
+    >
+      <div class="dialog-head">
+        <div>
+          <h2 id="lut-info-title">Angular lookup table (LUT)</h2>
+          <p>A reusable correction table for one optical configuration.</p>
+        </div>
+        <button id="close-lut-info" type="button">Close</button>
+      </div>
+      <div class="compact-dialog-content">
+        <p>
+          A LUT samples the analytical dome ray tracer on an XZ/YZ angular grid.
+          Point correction then uses bilinear interpolation between valid grid
+          nodes, which is faster than tracing both spherical interfaces for
+          every point. The paper-style LUT changes direction while preserving
+          the measured point range.
+        </p>
+        <div class="lut-angle-key" aria-label="LUT angle convention">
+          <span><b>0°</b> +X or +Y</span>
+          <span><b>90°</b> sensor +Z forward</span>
+          <span><b>180°</b> −X or −Y</span>
+        </div>
+        <p class="micro">
+          A LUT is configuration-specific. Changing dome dimensions, source
+          position, rotation, aperture, or refractive indices makes it stale.
+          Imported LUTs are accepted only when their stored configuration hash
+          matches the current setup.
+        </p>
+      </div>
     </dialog>
     <dialog id="plot-dialog">
       <div class="dialog-head">

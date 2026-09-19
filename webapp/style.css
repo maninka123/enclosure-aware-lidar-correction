@@ -151,7 +151,7 @@ select:focus-visible {
 }
 .lut-controls {
   display: grid;
-  grid-template-columns: repeat(5, minmax(105px, 1fr)) auto auto;
+  grid-template-columns: repeat(5, minmax(105px, 1fr));
   align-items: end;
   gap: 10px;
   padding: 12px 16px 16px;
@@ -167,7 +167,50 @@ select:focus-visible {
   margin-top: 6px;
 }
 .lut-files {
-  padding: 0 16px 16px;
+  padding: 0 16px 14px;
+}
+.lut-convention {
+  margin: 0 16px 12px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f2f7f7;
+  color: #536871;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.lut-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.lut-action-row button,
+.lut-action-row .file-button {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.lut-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 14px;
+  padding: 9px 11px;
+  border: 1px solid #d8e6e7;
+  border-radius: 10px;
+  background: #f3f9f8;
+}
+.lut-progress-row progress {
+  height: 8px;
+}
+.lut-progress-row output {
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 #lut-stats:empty,
 #lut-views[hidden] {
@@ -194,9 +237,8 @@ select:focus-visible {
   background: #fff;
 }
 .scene-lut-state {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  align-items: start;
   gap: 12px;
   margin: 10px 0;
   padding: 8px 10px;
@@ -204,6 +246,47 @@ select:focus-visible {
   background: #eef5f5;
   color: #526872;
   font-size: 11px;
+}
+.scene-lut-state > span {
+  font-weight: 700;
+}
+.scene-lut-state .lut-action-row {
+  width: 100%;
+}
+.scene-lut-state + .lut-progress-row {
+  margin: -3px 0 10px;
+}
+.compact-dialog {
+  width: min(620px, 92vw);
+  max-width: 620px;
+  border-radius: 18px;
+}
+.compact-dialog-content {
+  padding: 22px 24px 26px;
+  color: #425862;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.compact-dialog-content > p:first-child {
+  margin-top: 0;
+}
+.lut-angle-key {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 18px 0;
+}
+.lut-angle-key span {
+  padding: 12px 10px;
+  border-radius: 11px;
+  background: #eef6f5;
+  color: #376066;
+  text-align: center;
+}
+.lut-angle-key b {
+  display: block;
+  color: var(--teal);
+  font-size: 17px;
 }
 @media (max-width: 1150px) {
   .lut-controls {
@@ -228,6 +311,9 @@ select:focus-visible {
   }
   .lut-controls,
   .cloud-view-grid.side-by-side {
+    grid-template-columns: 1fr;
+  }
+  .lut-angle-key {
     grid-template-columns: 1fr;
   }
 }

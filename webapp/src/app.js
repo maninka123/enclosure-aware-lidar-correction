@@ -355,6 +355,12 @@ async function render() {
 }
 $("open-model").onclick = () => $("model-dialog").showModal();
 $("close-model").onclick = () => $("model-dialog").close();
+document
+  .querySelectorAll("[data-open-lut-info]")
+  .forEach(
+    (button) => (button.onclick = () => $("lut-info-dialog").showModal()),
+  );
+$("close-lut-info").onclick = () => $("lut-info-dialog").close();
 async function tab(name) {
   if (!$(name) || !["designer", "atlas", "cloud", "scene"].includes(name))
     name = "designer";
@@ -587,11 +593,36 @@ function lutState(text, kind = "") {
     $(id).dataset.state = kind;
   }
 }
+function setLUTExportEnabled(enabled) {
+  for (const id of ["export-lut", "scene-export-lut"])
+    $(id).disabled = !enabled;
+}
+function setLUTProgress(value) {
+  const progress = Math.max(0, Math.min(1, Number(value) || 0)),
+    percent = `${Math.round(progress * 100)}%`;
+  for (const id of ["lut-progress", "scene-lut-progress"])
+    $(id).value = progress;
+  for (const id of ["lut-progress-output", "scene-lut-progress-output"])
+    $(id).value = percent;
+  lutState(`Generating LUT · ${percent}`, "busy");
+}
+function setLUTBusy(busy) {
+  for (const id of ["generate-lut", "scene-generate-lut"])
+    $(id).disabled = busy;
+  for (const id of ["cancel-lut", "scene-cancel-lut"]) $(id).hidden = !busy;
+  for (const id of ["lut-progress-wrap", "scene-lut-progress-wrap"])
+    $(id).hidden = !busy;
+  if (busy) {
+    setLUTExportEnabled(false);
+    setLUTProgress(0);
+  }
+}
 async function checkLUTCompatibility(c = readConfig()) {
   const generation = ++lutCheckGeneration;
   if (!currentLUT) {
     lutStale = false;
     lutState("LUT not generated", "empty");
+    setLUTExportEnabled(false);
     return false;
   }
   const signature = await lutWorker.run({
@@ -605,6 +636,7 @@ async function checkLUTCompatibility(c = readConfig()) {
     lutStale ? "LUT stale — regenerate" : "LUT ready",
     lutStale ? "stale" : "ready",
   );
+  setLUTExportEnabled(!lutStale);
   return !lutStale;
 }
 function lutValidationStats() {
@@ -633,11 +665,7 @@ function lutValidationStats() {
 async function generateCurrentLUT() {
   if (lutBusy) return;
   lutBusy = true;
-  $("generate-lut").disabled = true;
-  $("scene-generate-lut").disabled = true;
-  $("cancel-lut").hidden = false;
-  $("lut-progress").hidden = false;
-  lutState("Generating LUT", "busy");
+  setLUTBusy(true);
   try {
     const response = await lutWorker.run(
       {
@@ -645,25 +673,27 @@ async function generateCurrentLUT() {
         config: readConfig(),
         settings: readLUTSettings(),
       },
-      (value) => ($("lut-progress").value = value),
+      setLUTProgress,
     );
+    setLUTProgress(1);
     currentLUT = response.lut;
     lutStale = false;
     lutState(response.reused ? "LUT ready · cached" : "LUT ready", "ready");
-    $("export-lut").disabled = false;
+    setLUTExportEnabled(true);
     $("lut-views").hidden = false;
     lutValidationStats();
     await charts.drawLUT(currentLUT);
     if (active === "scene" && $("scene-auto").checked) queueScene();
   } catch (e) {
-    lutState("LUT not generated", "empty");
+    lutState(
+      currentLUT ? "LUT stale — regenerate" : "LUT not generated",
+      currentLUT ? "stale" : "empty",
+    );
     error(e.message);
   } finally {
     lutBusy = false;
-    $("generate-lut").disabled = false;
-    $("scene-generate-lut").disabled = false;
-    $("cancel-lut").hidden = true;
-    $("lut-progress").hidden = true;
+    setLUTBusy(false);
+    setLUTExportEnabled(Boolean(currentLUT && !lutStale));
   }
 }
 $("generate-lut").onclick = generateCurrentLUT;
@@ -673,19 +703,19 @@ $("scene-generate-lut").onclick = async () => {
   clearTimeout(sceneTimer);
   if (currentLUT && !lutStale) await runScene();
 };
-$("cancel-lut").onclick = () => {
+function cancelLUTGeneration() {
   lutWorker.stop();
   lutWorker = workerClient();
   lutBusy = false;
-  $("generate-lut").disabled = false;
-  $("scene-generate-lut").disabled = false;
-  $("cancel-lut").hidden = true;
-  $("lut-progress").hidden = true;
+  setLUTBusy(false);
   lutState(
     currentLUT ? "LUT stale — regenerate" : "LUT not generated",
     currentLUT ? "stale" : "empty",
   );
-};
+  setLUTExportEnabled(false);
+}
+$("cancel-lut").onclick = cancelLUTGeneration;
+$("scene-cancel-lut").onclick = cancelLUTGeneration;
 for (const id of [
   "lut-resolution",
   "lut-xz-min",
@@ -696,7 +726,7 @@ for (const id of [
   $(id).addEventListener("input", () =>
     checkLUTCompatibility().catch((e) => error(e.message)),
   );
-$("export-lut").onclick = async () => {
+async function exportCurrentLUT() {
   try {
     if (!currentLUT || !(await checkLUTCompatibility()))
       throw Error("Generate a compatible LUT before exporting.");
@@ -708,36 +738,49 @@ $("export-lut").onclick = async () => {
   } catch (e) {
     error(e.message);
   }
-};
-$("import-lut").onchange = async (event) => {
+}
+$("export-lut").onclick = exportCurrentLUT;
+$("scene-export-lut").onclick = exportCurrentLUT;
+async function importLUTFile(file) {
+  if (!file) return false;
+  if (file.size > 120 * 1024 * 1024) throw Error("LUT JSON exceeds 120 MB.");
+  const response = await lutWorker.run({
+    type: "import_lut",
+    text: await file.text(),
+    config: readConfig(),
+  });
+  currentLUT = response.lut;
+  const s = currentLUT.settings;
+  $("lut-resolution").value = String(s.resolution_deg);
+  $("lut-xz-min").value = s.xz_min_deg;
+  $("lut-xz-max").value = s.xz_max_deg;
+  $("lut-yz-min").value = s.yz_min_deg;
+  $("lut-yz-max").value = s.yz_max_deg;
+  lutStale = false;
+  lutState("LUT ready · imported", "ready");
+  setLUTExportEnabled(true);
+  $("lut-views").hidden = false;
+  lutValidationStats();
+  await charts.drawLUT(currentLUT);
+  error("");
+  return true;
+}
+async function handleLUTImport(event) {
   try {
     const file = event.target.files[0];
-    if (!file) return;
-    if (file.size > 120 * 1024 * 1024) throw Error("LUT JSON exceeds 120 MB.");
-    const response = await lutWorker.run({
-      type: "import_lut",
-      text: await file.text(),
-      config: readConfig(),
-    });
-    currentLUT = response.lut;
-    const s = currentLUT.settings;
-    $("lut-resolution").value = String(s.resolution_deg);
-    $("lut-xz-min").value = s.xz_min_deg;
-    $("lut-xz-max").value = s.xz_max_deg;
-    $("lut-yz-min").value = s.yz_min_deg;
-    $("lut-yz-max").value = s.yz_max_deg;
-    lutStale = false;
-    lutState("LUT ready · imported", "ready");
-    $("export-lut").disabled = false;
-    $("lut-views").hidden = false;
-    lutValidationStats();
-    await charts.drawLUT(currentLUT);
-    error("");
+    if (!(await importLUTFile(file))) return;
+    if (active === "scene") {
+      $("scene-correction-method").value = "compare";
+      clearTimeout(sceneTimer);
+      await runScene();
+    }
   } catch (e) {
     error(e.message);
   }
   event.target.value = "";
-};
+}
+$("import-lut").onchange = handleLUTImport;
+$("scene-import-lut").onchange = handleLUTImport;
 async function loadCloud(text, name) {
   if (cloudBusy)
     throw Error(

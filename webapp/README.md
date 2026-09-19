@@ -16,6 +16,8 @@ A static browser application for the same concentric spherical-shell model as th
 
 The header **Model & assumptions** button opens equations, coordinate conventions, material sources, paper citation and the simplified-model scope in a dialog.
 
+Scene Lab and Point Clouds provide the same LUT workflow: generate with progress, save the versioned JSON, or load a compatible LUT created earlier. Imported tables are checked against the current enclosure configuration before use.
+
 Use **Save PNG** in a view for image export. Plots support orbit/pan/zoom; each relevant card has an expanded dialog. The designer exports curve CSVs, the atlas exports map CSVs, and scene/point-cloud workspaces export clouds and reports. Config JSON is compatible with the Python CLI. Scene JSON is a separate app format containing objects and sensor stations, not a general 3D mesh format.
 
 ## Local development
