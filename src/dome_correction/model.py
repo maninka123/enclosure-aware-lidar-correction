@@ -123,7 +123,7 @@ def trace_rays(directions, origin_m, dome=None):
 
 
 def xz_directions(angles_deg):
-    """Legacy angle convention: counterclockwise from +X towards +Z."""
+    """Return XZ directions for 0=+X, 90=+Z and 180=-X degrees."""
     a = np.deg2rad(np.asarray(angles_deg, float))
     return np.column_stack((np.cos(a), np.zeros_like(a), np.sin(a)))
 

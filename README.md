@@ -69,14 +69,16 @@ Choose the range model explicitly:
 
 Output XYZ uses the input's units and sensor frame. Invalid rows retain their positions in the table, receive NaN XYZ, and appear in a `.status.csv` sidecar. A `.report.json` records the settings and status counts. The input is never modified. Ray calculations are chunked; file parsing currently loads the complete cloud in memory.
 
-For paper-style angular LUT correction, generate a table from the same enclosure configuration and apply it while preserving each measured radius:
+### Use LUT correction
+
+Set the LUT bounds in the configuration, generate the table once, then use that same configuration and table for correction. XZ and YZ are sensor-frame plane angles: 0° is +X/+Y, 90° is forward (+Z), and 180° is −X/−Y.
 
 ```powershell
 dome-correct generate-lut --config configs/baseline.json --resolution-deg 0.1 --output outputs/baseline_lut
 dome-correct correct data/raw/scan.pcd --config configs/baseline.json --method lut --lut outputs/baseline_lut/lut.json --input-unit m --output outputs/scan_lut_corrected.pcd
 ```
 
-The LUT stores sensor-frame exit direction vectors on an XZ/YZ angular grid and never extrapolates or interpolates through invalid neighbours. Its JSON contains geometry, indices, rotation, coordinate conventions, configuration hashes and validation metrics. See [LUT correction](docs/lut_correction.md).
+Use `--xz-min-deg`, `--xz-max-deg`, `--yz-min-deg`, and `--yz-max-deg` with `generate-lut` to override the configured domain. Check `validation.json` before using the table. LUT correction uses bilinear interpolation and preserves measured range; incompatible configurations and out-of-domain points are rejected. See [LUT correction](docs/lut_correction.md) for the scientific details.
 
 ## Python API
 

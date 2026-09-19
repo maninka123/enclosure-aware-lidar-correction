@@ -24,6 +24,7 @@ SCHEMA_VERSION = "2.0"
 
 @dataclass(frozen=True)
 class LUTSettings:
+    """Sensor-frame LUT grid using 0..180 degree XZ/YZ plane angles."""
     resolution_deg: float = 0.1
     xz_min_deg: float = 50.0
     xz_max_deg: float = 130.0

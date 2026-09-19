@@ -59,7 +59,9 @@ class WorkflowTests(unittest.TestCase):
             lut_dir, output = root/'lut', root/'corrected.csv'
             with contextlib.redirect_stdout(io.StringIO()):
                 main(['generate-lut', '--config', str(config),
-                      '--resolution-deg', '10', '--output', str(lut_dir)])
+                      '--resolution-deg', '5', '--xz-min-deg', '75',
+                      '--xz-max-deg', '105', '--yz-min-deg', '75',
+                      '--yz-max-deg', '105', '--output', str(lut_dir)])
                 main(['correct', str(raw), '--config', str(config),
                       '--method', 'lut', '--lut', str(lut_dir/'lut.json'),
                       '--input-unit', 'm', '--output', str(output)])
@@ -70,6 +72,10 @@ class WorkflowTests(unittest.TestCase):
             report = json.loads(output.with_suffix('.csv.report.json').read_text())
             self.assertEqual(report['method'], 'lut')
             self.assertEqual(report['range_model'], 'preserve_measured_radius')
+            validation = json.loads((lut_dir/'validation.json').read_text())
+            self.assertEqual(validation['settings']['resolution_deg'], 5)
+            self.assertEqual(validation['settings']['xz_min_deg'], 75)
+            self.assertEqual(validation['settings']['yz_max_deg'], 105)
 
     def test_experiments_report_invalid_perturbations(self):
         from dome_correction.experiments import run_experiments

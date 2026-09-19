@@ -44,6 +44,8 @@ dome-correct generate-lut --config configs/baseline.json --resolution-deg 0.1 --
 dome-correct correct data/raw/scan.pcd --config configs/baseline.json --method lut --lut outputs/baseline_lut/lut.json --input-unit m --output outputs/scan_lut_corrected.pcd
 ```
 
+The generation command also accepts `--xz-min-deg`, `--xz-max-deg`, `--yz-min-deg`, and `--yz-max-deg`. Command-line values override the `lut` block in the configuration. The generated `validation.json` records the effective settings and interpolation metrics.
+
 The browser's Point Clouds workspace offers Analytical, LUT and Compare both. For clouds without a reference, it reports correction magnitude and analytical/LUT method differences rather than accuracy. Scene Lab has simulated refracted-hit truth and therefore reports separate ground-truth errors for Raw, Analytical and LUT reconstructions. Near-zero analytical error there is an exact-model consistency result, not measured real-world accuracy.
 
 ## Limitations

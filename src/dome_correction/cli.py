@@ -1,6 +1,7 @@
 """Command line entry points. Existing output files are never overwritten."""
 import argparse
 from collections import Counter
+from dataclasses import asdict
 import json
 from pathlib import Path
 from .config import load_config, load_lut_settings, config_dict
@@ -18,7 +19,16 @@ def main(argv=None):
     experiment.add_argument("--output", required=True, help="New output directory")
     generate = commands.add_parser("generate-lut", help="Generate and validate an angular LUT")
     generate.add_argument("--config", required=True)
-    generate.add_argument("--resolution-deg", type=float)
+    generate.add_argument("--resolution-deg", type=float,
+                          help="Angular grid spacing in degrees")
+    generate.add_argument("--xz-min-deg", type=float,
+                          help="XZ lower bound: 0=+X, 90=+Z, 180=-X")
+    generate.add_argument("--xz-max-deg", type=float,
+                          help="XZ upper bound: 0=+X, 90=+Z, 180=-X")
+    generate.add_argument("--yz-min-deg", type=float,
+                          help="YZ lower bound: 0=+Y, 90=+Z, 180=-Y")
+    generate.add_argument("--yz-max-deg", type=float,
+                          help="YZ upper bound: 0=+Y, 90=+Z, 180=-Y")
     generate.add_argument("--output", required=True, help="New output directory")
     correct = commands.add_parser("correct", help="Correct a sensor-frame CSV or ASCII PCD")
     correct.add_argument("input")
@@ -38,16 +48,18 @@ def main(argv=None):
             manifest = run_experiments(args.output, dome, origin, rotation)
             print(json.dumps(manifest["synthetic_plane"], indent=2))
         elif args.command == "generate-lut":
-            settings = load_lut_settings(args.config)
-            if args.resolution_deg is not None:
-                settings = LUTSettings(
-                    resolution_deg=args.resolution_deg,
-                    xz_min_deg=settings.xz_min_deg,
-                    xz_max_deg=settings.xz_max_deg,
-                    yz_min_deg=settings.yz_min_deg,
-                    yz_max_deg=settings.yz_max_deg,
-                    interpolation=settings.interpolation,
-                )
+            configured = load_lut_settings(args.config)
+            values = asdict(configured)
+            for argument, field in (
+                (args.resolution_deg, "resolution_deg"),
+                (args.xz_min_deg, "xz_min_deg"),
+                (args.xz_max_deg, "xz_max_deg"),
+                (args.yz_min_deg, "yz_min_deg"),
+                (args.yz_max_deg, "yz_max_deg"),
+            ):
+                if argument is not None:
+                    values[field] = argument
+            settings = LUTSettings(**values)
             output = Path(args.output)
             if output.exists():
                 raise ValueError(f"Output already exists: {output}")
@@ -56,10 +68,11 @@ def main(argv=None):
                                sensor_to_dome_rotation=rotation,
                                settings=settings)
             save_lut(lut, output/"lut.json")
+            summary = {"settings": asdict(lut.settings), **lut.validation}
             (output/"validation.json").write_text(
-                json.dumps(lut.validation, indent=2), encoding="utf-8")
+                json.dumps(summary, indent=2), encoding="utf-8")
             print(json.dumps({"lut": str(output/"lut.json"),
-                              **lut.validation}, indent=2))
+                              **summary}, indent=2))
         else:
             output = Path(args.output)
             report_path = output.with_suffix(output.suffix + ".report.json")
