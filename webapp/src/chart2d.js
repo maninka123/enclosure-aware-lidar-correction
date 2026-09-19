@@ -76,8 +76,16 @@ export class Chart2D {
         const cells = [];
         d.y.forEach((_, y) =>
           d.x.forEach((_, x) => {
-            if (finite(d.z[y][x]))
-              cells.push([x, y, d.z[y][x], d.meta?.[y]?.[x]]);
+            const value = d.z[y][x];
+            if (finite(value))
+              cells.push([
+                x,
+                y,
+                d.zrange
+                  ? Math.max(d.zrange[0], Math.min(d.zrange[1], value))
+                  : value,
+                d.meta?.[y]?.[x],
+              ]);
           }),
         );
         series.push({
@@ -305,15 +313,18 @@ export class Chart2D {
       };
       option.visualMap = {
         dimension: 2,
-        min: 0,
-        max: finiteMaximum(vals),
+        min: heat.zrange?.[0] ?? 0,
+        max: heat.zrange?.[1] ?? finiteMaximum(vals),
         calculable: false,
         orient: "vertical",
         right: 0,
         top: "middle",
         itemHeight: 130,
         itemWidth: 8,
-        text: [heat.colorbar?.title?.text || "", "0"],
+        text: [
+          heat.colorbar?.title?.text || "",
+          Number(heat.zrange?.[0] ?? 0).toPrecision(3),
+        ],
         inRange: { color: heat.colorscale.map((p) => p[1]) },
         textStyle: { color: "#657580" },
       };

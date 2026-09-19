@@ -51,6 +51,15 @@ class LUTTests(unittest.TestCase):
                                    (traced.exit_direction @ rotation)[common],
                                    atol=2e-14)
 
+    def test_valid_full_domain_nodes_have_finite_inspection_deltas(self):
+        lut = generate_lut(
+            Dome(), origin_m=(-.02, 0, .02445),
+            sensor_to_dome_rotation=np.eye(3),
+            settings=LUTSettings(10, 0, 180, 0, 180), validate=False,
+        )
+        self.assertTrue(np.isfinite(lut.delta_xz_deg[lut.valid]).all())
+        self.assertTrue(np.isfinite(lut.delta_yz_deg[lut.valid]).all())
+
     def test_bilinear_interpolation_known_constant_nodes(self):
         settings = LUTSettings(1, 0, 1, 0, 1)
         exits = np.zeros((2, 2, 3)); exits[..., 2] = 1
@@ -71,6 +80,13 @@ class LUTTests(unittest.TestCase):
         fine = generate_lut(settings=self.settings(1), **kwargs)
         self.assertLess(fine.validation["rms_angular_error_deg"],
                         coarse.validation["rms_angular_error_deg"])
+        self.assertEqual(
+            fine.validation_map["error_deg"].shape,
+            (len(fine.validation_map["yz_deg"]),
+             len(fine.validation_map["xz_deg"])),
+        )
+        self.assertEqual(np.isfinite(fine.validation_map["error_deg"]).sum(),
+                         fine.validation["valid_validation_samples"])
 
     def test_zero_correction_limits(self):
         for dome, origin in [

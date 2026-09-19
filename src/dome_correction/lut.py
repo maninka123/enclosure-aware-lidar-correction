@@ -76,10 +76,10 @@ class AngularLUT:
     generation_time_s: float
     validation: dict = field(default_factory=dict)
     validation_error_deg: np.ndarray = field(default_factory=lambda: np.empty(0))
+    validation_map: dict = field(default_factory=dict)
 
 
-def direction_to_angles(directions):
-    """Return paper-style XZ/YZ angles: 90 degrees is sensor +Z."""
+def _plane_angles(directions, require_positive_z):
     d = vectors(directions, "directions")
     length = np.linalg.norm(d, axis=1)
     valid = np.isfinite(d).all(axis=1) & np.isfinite(length) & (length > 0)
@@ -90,9 +90,15 @@ def direction_to_angles(directions):
     xz[np.hypot(unit[:, 0], unit[:, 2]) <= 1e-12] = 90.0
     yz[np.hypot(unit[:, 1], unit[:, 2]) <= 1e-12] = 90.0
     angles = np.column_stack((xz, yz))
-    valid &= unit[:, 2] >= -1e-12
+    if require_positive_z:
+        valid &= unit[:, 2] >= -1e-12
     angles[~valid] = np.nan
     return angles
+
+
+def direction_to_angles(directions):
+    """Return paper-style input XZ/YZ angles: 90 degrees is sensor +Z."""
+    return _plane_angles(directions, True)
 
 
 def angles_to_direction(theta_xz_deg, theta_yz_deg):
@@ -184,7 +190,10 @@ def generate_lut(dome=None, *, origin_m=(0, 0, 0),
     valid = traced.valid & representable
     exit_sensor = traced.exit_direction @ rotation
     exit_sensor[~valid] = np.nan
-    exit_angles = direction_to_angles(exit_sensor)
+    # Valid rays can refract below the sensor XY plane near the 0/180-degree
+    # input boundaries. Their exit vectors remain valid; only LUT inputs are
+    # restricted to +Z, so use unrestricted plane angles for exported deltas.
+    exit_angles = _plane_angles(exit_sensor, False)
     delta = _wrap_delta(exit_angles - np.column_stack((gx.ravel(), gy.ravel())))
     delta[~valid] = np.nan
     status = traced.status.copy()
@@ -286,21 +295,31 @@ def validate_lut(lut, *, dome, origin_m, sensor_to_dome_rotation,
     """Validate at deterministic cell interiors, never only at LUT nodes."""
     cx = (lut.xz_deg[:-1]+lut.xz_deg[1:])/2
     cy = (lut.yz_deg[:-1]+lut.yz_deg[1:])/2
-    gx, gy = np.meshgrid(cx, cy)
-    count = gx.size
-    take = np.unique(np.linspace(0, max(0, count-1),
-                                 min(count, sample_limit), dtype=int))
-    directions, representable = angles_to_direction(gx.ravel()[take],
-                                                      gy.ravel()[take])
+    x_count = min(len(cx), max(1, int(np.sqrt(sample_limit*len(cx)/len(cy)))))
+    y_count = min(len(cy), max(1, sample_limit//x_count))
+    xi = np.unique(np.linspace(0, len(cx)-1, x_count, dtype=int))
+    yi = np.unique(np.linspace(0, len(cy)-1, y_count, dtype=int))
+    gi, gj = np.meshgrid(xi, yi)
+    sample_x, sample_y = cx[gi], cy[gj]
+    directions, representable = angles_to_direction(sample_x.ravel(),
+                                                      sample_y.ravel())
     rotation = rotation_matrix(sensor_to_dome_rotation)
     analytical = trace_rays(directions @ rotation.T, origin_m, dome)
     reference = analytical.exit_direction @ rotation
     predicted, lut_valid, _ = lookup_directions(directions, lut)
     common = representable & analytical.valid & lut_valid
     errors = angle_between_deg(reference[common], predicted[common])
-    error_map = np.full(count, np.nan)
-    error_map[take[common]] = errors
-    lut.validation_error_deg = error_map.reshape(gx.shape)
+    cell_indices = (gj*len(cx)+gi).ravel()
+    error_map = np.full(len(cx)*len(cy), np.nan)
+    error_map[cell_indices[common]] = errors
+    validation_map_error = np.full(cell_indices.size, np.nan)
+    validation_map_error[common] = errors
+    lut.validation_error_deg = error_map.reshape(len(cy), len(cx))
+    lut.validation_map = {
+        "xz_deg": cx[xi],
+        "yz_deg": cy[yi],
+        "error_deg": validation_map_error.reshape(len(yi), len(xi)),
+    }
     def endpoint(distance):
         return float(np.sqrt(np.mean((2*distance*np.sin(np.deg2rad(errors)/2))**2))*1000) if len(errors) else None
     return {
@@ -312,7 +331,7 @@ def validate_lut(lut, *, dome, origin_m, sensor_to_dome_rotation,
             lut.valid, lut.status))),
         "valid_cells": int(lut.valid.sum()),
         "invalid_cells": int(lut.valid.size-lut.valid.sum()),
-        "validation_samples": int(len(take)),
+        "validation_samples": int(cell_indices.size),
         "valid_validation_samples": int(common.sum()),
         "mean_angular_error_deg": float(np.mean(errors)) if len(errors) else None,
         "rms_angular_error_deg": float(np.sqrt(np.mean(errors**2))) if len(errors) else None,
@@ -353,6 +372,11 @@ def lut_to_dict(lut):
         "generation_time_s": lut.generation_time_s,
         "validation": lut.validation,
         "validation_error_deg": floats(lut.validation_error_deg),
+        "validation_map": ({
+            "xz_deg": floats(lut.validation_map["xz_deg"]),
+            "yz_deg": floats(lut.validation_map["yz_deg"]),
+            "error_deg": floats(lut.validation_map["error_deg"]),
+        } if lut.validation_map else None),
     }
 
 
@@ -386,6 +410,11 @@ def load_lut(path, *, dome=None, origin_m=None, sensor_to_dome_rotation=None):
         generation_time_s=float(data["generation_time_s"]),
         validation=data.get("validation", {}),
         validation_error_deg=np.asarray(data.get("validation_error_deg", []), float),
+        validation_map={
+            "xz_deg": np.asarray(data["validation_map"]["xz_deg"], float),
+            "yz_deg": np.asarray(data["validation_map"]["yz_deg"], float),
+            "error_deg": np.asarray(data["validation_map"]["error_deg"], float),
+        } if data.get("validation_map") else {},
     )
     expected = (len(lut.yz_deg), len(lut.xz_deg))
     if (lut.exit_direction_sensor.size == expected[0]*expected[1]*3):
@@ -403,6 +432,12 @@ def load_lut(path, *, dome=None, origin_m=None, sensor_to_dome_rotation=None):
         if lut.validation_error_deg.size != validation_shape[0]*validation_shape[1]:
             raise ValueError("Malformed LUT validation error map.")
         lut.validation_error_deg = lut.validation_error_deg.reshape(validation_shape)
+    if lut.validation_map:
+        map_shape = (len(lut.validation_map["yz_deg"]),
+                     len(lut.validation_map["xz_deg"]))
+        if lut.validation_map["error_deg"].size != map_shape[0]*map_shape[1]:
+            raise ValueError("Malformed LUT validation map.")
+        lut.validation_map["error_deg"] = lut.validation_map["error_deg"].reshape(map_shape)
     if (lut.exit_direction_sensor.shape != (*expected, 3)
             or lut.valid.shape != expected or lut.status.shape != expected
             or lut.delta_xz_deg.shape != expected or lut.delta_yz_deg.shape != expected

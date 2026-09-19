@@ -511,37 +511,73 @@ export function seriesPlot(id, x, rows, xTitle, yTitle) {
     showlegend: data.length > 1,
   });
 }
-const rowsFromFlat = (values, width, height) =>
-  Array.from({ length: height }, (_, row) =>
-    Array.from({ length: width }, (_, column) => values[row * width + column]),
+const sampledAxis = (length, limit = 181) => {
+  if (length <= limit) return Array.from({ length }, (_, index) => index);
+  return Array.from(
+    new Set(
+      Array.from({ length: limit }, (_, index) =>
+        Math.round((index * (length - 1)) / (limit - 1)),
+      ),
+    ),
   );
+};
 export function drawLUT(lut) {
   const width = lut.xz.length,
     height = lut.yz.length,
-    total = new Float64Array(lut.valid.length),
     heat = (
       id,
       x,
       y,
-      values,
+      valueAt,
       title,
       w = width,
       h = height,
-      meta = null,
+      metaAt = null,
       hover = null,
-    ) =>
-      plot(
+      signed = false,
+      robust = false,
+    ) => {
+      const xi = sampledAxis(w),
+        yi = sampledAxis(h),
+        sampledX = xi.map((index) => x[index]),
+        sampledY = yi.map((index) => y[index]),
+        z = yi.map((row) =>
+          xi.map((column) => valueAt(row * w + column, column, row)),
+        ),
+        meta = metaAt
+          ? yi.map((row) =>
+              xi.map((column) => metaAt(row * w + column, column, row)),
+            )
+          : null,
+        finiteValues = z.flat().filter(Number.isFinite),
+        maximum = finiteValues.length
+          ? finiteValues.reduce(
+              (result, value) => Math.max(result, Math.abs(value)),
+              0,
+            )
+          : 0,
+        robustMaximum =
+          robust && finiteValues.length
+            ? finiteValues
+                .map(Math.abs)
+                .sort((first, second) => first - second)[
+                Math.floor((finiteValues.length - 1) * 0.98)
+              ]
+            : maximum,
+        scaleMaximum = Math.max(robustMaximum, 1e-12);
+      return plot(
         id,
         [
           {
             type: "heatmap",
-            x,
-            y,
-            z: rowsFromFlat(values, w, h),
+            x: sampledX,
+            y: sampledY,
+            z,
             meta,
             hover,
             colorscale,
             colorbar: { title: { text: title } },
+            zrange: signed ? [-scaleMaximum, scaleMaximum] : [0, scaleMaximum],
           },
         ],
         {
@@ -549,71 +585,79 @@ export function drawLUT(lut) {
           yaxis: { title: { text: "YZ input · atan2(Z,Y) (deg)" } },
         },
       );
-  total.fill(NaN);
-  for (let j = 0; j < height; j++)
-    for (let i = 0; i < width; i++) {
-      const k = j * width + i,
-        incident = anglesToDirection(lut.xz[i], lut.yz[j]);
-      if (lut.valid[k] && incident)
-        total[k] = angle(
-          incident,
-          Array.from(lut.exit.slice(k * 3, k * 3 + 3)),
-        );
-    }
-  const meta = Array.from({ length: height }, (_, j) =>
-    Array.from({ length: width }, (_, i) => {
-      const k = j * width + i;
+    },
+    totalAt = (k, i, j) => {
+      const incident = anglesToDirection(lut.xz[i], lut.yz[j]);
+      return lut.valid[k] && incident
+        ? angle(incident, [
+            lut.exit[k * 3],
+            lut.exit[k * 3 + 1],
+            lut.exit[k * 3 + 2],
+          ])
+        : NaN;
+    },
+    metaAt = (k, i, j) => {
+      const total = totalAt(k, i, j);
       return {
         dx: lut.deltaXZ[k],
         dy: lut.deltaYZ[k],
-        total: total[k],
+        total,
         status: lut.valid[k] ? "ok" : "invalid",
       };
-    }),
-  );
-  const hover = (xz, yz, _value, item) =>
-    `XZ input ${xz}°\nYZ input ${yz}°\nΔ XZ ${item.dx.toFixed(6)}°\nΔ YZ ${item.dy.toFixed(6)}°\nTotal ${item.total.toFixed(6)}°\nStatus ${item.status}`;
-  const cx = lut.xz.slice(0, -1).map((value, i) => (value + lut.xz[i + 1]) / 2),
-    cy = lut.yz.slice(0, -1).map((value, i) => (value + lut.yz[i + 1]) / 2);
+    },
+    hover = (xz, yz, _value, item) =>
+      `XZ input ${xz}°\nYZ input ${yz}°\nΔ XZ ${item.dx.toFixed(6)}°\nΔ YZ ${item.dy.toFixed(6)}°\nTotal ${item.total.toFixed(6)}°\nStatus ${item.status}`,
+    validation = lut.validationMap,
+    cx =
+      validation?.xz ||
+      lut.xz.slice(0, -1).map((value, i) => (value + lut.xz[i + 1]) / 2),
+    cy =
+      validation?.yz ||
+      lut.yz.slice(0, -1).map((value, i) => (value + lut.yz[i + 1]) / 2),
+    validationValues = validation?.error || lut.validationError || [];
   return Promise.all([
     heat(
       "lut-dx",
       lut.xz,
       lut.yz,
-      lut.deltaXZ,
-      "Δ XZ °",
+      (k) => lut.deltaXZ[k],
+      "Δ XZ ° · P98 scale",
       width,
       height,
-      meta,
+      metaAt,
       hover,
+      true,
+      true,
     ),
     heat(
       "lut-dy",
       lut.xz,
       lut.yz,
-      lut.deltaYZ,
-      "Δ YZ °",
+      (k) => lut.deltaYZ[k],
+      "Δ YZ ° · P98 scale",
       width,
       height,
-      meta,
+      metaAt,
       hover,
+      true,
+      true,
     ),
     heat(
       "lut-total",
       lut.xz,
       lut.yz,
-      total,
+      totalAt,
       "Total °",
       width,
       height,
-      meta,
+      metaAt,
       hover,
     ),
     heat(
       "lut-validation",
       cx,
       cy,
-      lut.validationError || new Float64Array(cx.length * cy.length).fill(NaN),
+      (k) => validationValues[k],
       "Error °",
       cx.length,
       cy.length,

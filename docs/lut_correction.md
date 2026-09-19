@@ -15,9 +15,9 @@ Each axis runs from 0° to 180°: 0° is its positive lateral axis, 90° is sens
 
 ## Generation and validation
 
-The user selects XZ/YZ limits and a resolution. The default resolution is 0.1°, but no accuracy claim is attached to that value. Each grid direction is transformed by the configured sensor-to-enclosure rotation, traced through the inner and outer surfaces, and transformed back to the sensor frame. Invalid aperture, intersection and total-internal-reflection results remain invalid cells.
+In the browser, the normal workflow asks only for resolution and covers 0°–180° in both planes. An **Advanced domain** control allows smaller bounds for a known sensor field of view. The default resolution is 0.1°, but no accuracy claim is attached to that value. Each grid direction is transformed by the configured sensor-to-enclosure rotation, traced through the inner and outer surfaces, and transformed back to the sensor frame. Invalid aperture, intersection and total-internal-reflection results remain invalid cells.
 
-Validation evaluates deterministic cell midpoints, which are separate from the table nodes. It compares bilinearly interpolated LUT directions with direct analytical `direction_only` traces and reports mean, RMS, P95 and maximum angular error. Equivalent RMS endpoint differences are reported at 1, 5 and 10 metres. The UI also shows an interpolation-error heatmap. Finer resolution increases generation time and memory; validation results should guide the selection.
+Validation evaluates a regular deterministic grid of cell midpoints, separate from the table nodes. It compares bilinearly interpolated LUT directions with direct analytical `direction_only` traces and reports mean, RMS, P95 and maximum angular error. Equivalent RMS endpoint differences are reported at 1, 5 and 10 metres. The UI shows the same regular samples in the interpolation-error heatmap; rendering is display-sampled for very fine tables without changing the full LUT used for correction. Signed ΔXZ/ΔYZ maps use a labelled symmetric P98 colour range because their plane-angle coordinates become ill-conditioned at the 0°/180° lateral-axis endpoints; hover values remain exact. Finer resolution increases generation time and memory, so validation results should guide the selection.
 
 ## Runtime lookup
 

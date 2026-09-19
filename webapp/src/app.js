@@ -29,6 +29,7 @@ import * as charts from "./plots.js";
 const $ = (id) => document.getElementById(id),
   val = (id) => Number($(id).value),
   fmt = (v, d = 3) => (Number.isFinite(v) ? v.toFixed(d) : "—");
+const ANALYTICAL_RANGE_MODEL = "optical_path";
 let active = "designer",
   config = baseline(),
   pinned = null,
@@ -379,6 +380,10 @@ async function tab(name) {
   notice("");
   await render();
   if (name === "cloud" && cloudResult) drawCloud();
+  if (name === "cloud" && currentLUT && !lutStale) {
+    $("lut-views").hidden = false;
+    await charts.drawLUT(currentLUT);
+  }
   if (name === "scene" && !sceneResult) queueScene();
 }
 document
@@ -589,6 +594,17 @@ function readLUTSettings() {
     interpolation: "bilinear",
   };
 }
+function updateLUTDomainLabel() {
+  const settings = readLUTSettings(),
+    full =
+      settings.xz_min_deg === 0 &&
+      settings.xz_max_deg === 180 &&
+      settings.yz_min_deg === 0 &&
+      settings.yz_max_deg === 180;
+  $("lut-domain-value").textContent = full
+    ? "Full XZ and YZ range · 0–180°"
+    : `Custom · XZ ${settings.xz_min_deg}–${settings.xz_max_deg}° · YZ ${settings.yz_min_deg}–${settings.yz_max_deg}°`;
+}
 function lutState(text, kind = "") {
   for (const id of ["lut-status", "scene-lut-status"]) {
     $(id).textContent = text;
@@ -725,9 +741,10 @@ for (const id of [
   "lut-yz-min",
   "lut-yz-max",
 ])
-  $(id).addEventListener("input", () =>
-    checkLUTCompatibility().catch((e) => error(e.message)),
-  );
+  $(id).addEventListener("input", () => {
+    updateLUTDomainLabel();
+    checkLUTCompatibility().catch((e) => error(e.message));
+  });
 async function exportCurrentLUT() {
   try {
     if (!currentLUT || !(await checkLUTCompatibility()))
@@ -758,6 +775,7 @@ async function importLUTFile(file) {
   $("lut-xz-max").value = s.xz_max_deg;
   $("lut-yz-min").value = s.yz_min_deg;
   $("lut-yz-max").value = s.yz_max_deg;
+  updateLUTDomainLabel();
   lutStale = false;
   lutState("LUT ready · imported", "ready");
   setLUTExportEnabled(true);
@@ -811,7 +829,7 @@ async function loadCloud(text, name) {
   $("cloud-info").textContent =
     `${name} · ${result.count.toLocaleString()} points · ${result.fields.join(", ")}`;
   $("cloud-status").textContent =
-    "Loaded. Confirm units, axes and range model, then apply correction.";
+    "Loaded. Confirm the input units, then apply correction.";
   $("correct-cloud").disabled = false;
 }
 $("cloud-file").onchange = async (e) => {
@@ -830,22 +848,14 @@ $("cloud-file").onchange = async (e) => {
   e.target.value = "";
 };
 function rangeNote() {
-  const mode = $("cloud-mode").value,
-    method = $("cloud-method").value,
-    usesAnalytical = method !== "lut";
-  $("cloud-reference").disabled = !usesAnalytical || mode !== "optical_path";
-  $("cloud-mode").disabled = !usesAnalytical;
+  const method = $("cloud-method").value;
   $("lut-panel").hidden = method === "analytical";
   $("range-note").textContent =
     method === "lut"
       ? "LUT correction preserves each point's measured radius and applies bilinearly interpolated angular correction."
-      : mode === "direction_only"
-        ? "Preserves the measured radius; approximates the exit ray as starting at the source."
-        : mode === "geometric_path"
-          ? "Use only when the reported radius is the sum of physical path lengths in all three media."
-          : "Assumes reference index × reported radius equals the one-way optical path. Check sensor firmware, range offsets and group-index effects.";
+      : "Analytical correction uses the complete two-interface trace and optical-path reconstruction. The configured inside index is the range reference.";
 }
-["cloud-unit", "cloud-mode", "cloud-reference", "cloud-method"].forEach((id) =>
+["cloud-unit", "cloud-method"].forEach((id) =>
   $(id).addEventListener("input", () => {
     markStale();
     rangeNote();
@@ -855,15 +865,9 @@ $("correct-cloud").onclick = async () => {
   try {
     const c = readConfig(),
       method = $("cloud-method").value,
-      mode = $("cloud-mode").value,
-      reference = val("cloud-reference"),
+      mode = ANALYTICAL_RANGE_MODEL,
+      reference = c.nInside,
       factor = val("cloud-unit");
-    if (
-      method !== "lut" &&
-      mode === "optical_path" &&
-      (!Number.isFinite(reference) || reference <= 0)
-    )
-      throw Error("Range reference index must be positive.");
     if (method !== "analytical" && !(await checkLUTCompatibility(c)))
       throw Error("Generate a compatible LUT for the current enclosure first.");
     cloudBusy = true;
@@ -907,8 +911,8 @@ $("correct-cloud").onclick = async () => {
     const current = JSON.stringify({
       c: readConfig(),
       method: $("cloud-method").value,
-      mode: $("cloud-mode").value,
-      reference: val("cloud-reference"),
+      mode: ANALYTICAL_RANGE_MODEL,
+      reference: readConfig().nInside,
       factor: val("cloud-unit"),
       lutHash: currentLUT?.lutHash,
     });
@@ -1135,8 +1139,6 @@ $("demo-cloud").onclick = async () => {
       "synthetic-raw.csv",
     );
     $("cloud-unit").value = "1";
-    $("cloud-mode").value = "optical_path";
-    $("cloud-reference").value = c.nInside;
     rangeNote();
     notice(
       "Synthetic optical ranges loaded using the current geometry. Apply correction to reconstruct them.",
@@ -1203,7 +1205,7 @@ function sceneSnapshot() {
     pose: worldPose(),
     resolution: val("resolution"),
     fov: val("fov"),
-    mode: $("scene-mode").value,
+    mode: ANALYTICAL_RANGE_MODEL,
     correction_method: $("scene-correction-method").value,
   };
 }
@@ -1281,7 +1283,6 @@ $("object-list").onchange = objectEditor;
   "world-yaw",
   "resolution",
   "fov",
-  "scene-mode",
   "scene-correction-method",
 ].forEach((id) => $(id).addEventListener("input", sceneEdited));
 $("add-object").onclick = () => {
@@ -1754,7 +1755,6 @@ $("load-scene").onchange = async (e) => {
     );
     $("resolution").value = data.resolution;
     $("fov").value = data.fov;
-    $("scene-mode").value = data.mode;
     $("scene-correction-method").value = data.correction_method || "compare";
     if (data.lut) {
       $("lut-resolution").value = data.lut.resolution_deg;
@@ -1762,6 +1762,7 @@ $("load-scene").onchange = async (e) => {
       $("lut-xz-max").value = data.lut.xz_max_deg;
       $("lut-yz-min").value = data.lut.yz_min_deg;
       $("lut-yz-max").value = data.lut.yz_max_deg;
+      updateLUTDomainLabel();
     }
     objectEditor();
     sceneEdited();

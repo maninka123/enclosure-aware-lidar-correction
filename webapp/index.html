@@ -495,21 +495,8 @@
                 <option value="lut">LUT</option>
                 <option value="compare">Compare both</option>
               </select></label
-            ><label
-              >Range model<select id="cloud-mode">
-                <option value="direction_only">
-                  Direction only · preserve radius
-                </option>
-                <option value="geometric_path">Total geometric path</option>
-                <option value="optical_path">Optical path</option>
-              </select></label
-            ><label
-              >Range reference index<input
-                id="cloud-reference"
-                type="number"
-                value="1.000293"
-                step=".000001"
-                min=".1" /></label
+            ><span class="fixed-model-note"
+              ><b>Analytical model</b> Full optical-path reconstruction</span
             ><button id="correct-cloud" class="primary" disabled>
               Apply correction →</button
             ><button id="cancel-cloud" class="quiet" hidden>Cancel</button>
@@ -528,49 +515,62 @@
                   <option value="0.5">0.5°</option>
                   <option value="0.25">0.25°</option>
                   <option value="0.1" selected>0.1°</option>
-                  <option value="0.05">0.05°</option>
+                  <option value="0.05">0.05° · use Advanced domain</option>
                 </select></label
               >
-              <label
-                >XZ minimum °<input
-                  id="lut-xz-min"
-                  type="number"
-                  min="0"
-                  max="180"
-                  value="50"
-                  step="0.5"
-              /></label>
-              <label
-                >XZ maximum °<input
-                  id="lut-xz-max"
-                  type="number"
-                  min="0"
-                  max="180"
-                  value="130"
-                  step="0.5"
-              /></label>
-              <label
-                >YZ minimum °<input
-                  id="lut-yz-min"
-                  type="number"
-                  min="0"
-                  max="180"
-                  value="50"
-                  step="0.5"
-              /></label>
-              <label
-                >YZ maximum °<input
-                  id="lut-yz-max"
-                  type="number"
-                  min="0"
-                  max="180"
-                  value="130"
-                  step="0.5"
-              /></label>
+              <span class="lut-domain-summary"
+                ><b>Angular domain</b
+                ><span id="lut-domain-value"
+                  >Full XZ and YZ range · 0–180°</span
+                ></span
+              >
+              <details class="lut-advanced">
+                <summary>Advanced domain</summary>
+                <div class="lut-domain-fields">
+                  <label
+                    >XZ minimum °<input
+                      id="lut-xz-min"
+                      type="number"
+                      min="0"
+                      max="180"
+                      value="0"
+                      step="0.5"
+                  /></label>
+                  <label
+                    >XZ maximum °<input
+                      id="lut-xz-max"
+                      type="number"
+                      min="0"
+                      max="180"
+                      value="180"
+                      step="0.5"
+                  /></label>
+                  <label
+                    >YZ minimum °<input
+                      id="lut-yz-min"
+                      type="number"
+                      min="0"
+                      max="180"
+                      value="0"
+                      step="0.5"
+                  /></label>
+                  <label
+                    >YZ maximum °<input
+                      id="lut-yz-max"
+                      type="number"
+                      min="0"
+                      max="180"
+                      value="180"
+                      step="0.5"
+                  /></label>
+                </div>
+                <p>Use a smaller domain for a known sensor field of view.</p>
+              </details>
             </div>
             <p class="lut-convention">
-              Sensor-plane domain · 0° positive lateral axis · 90° +Z forward ·
-              180° negative lateral axis
+              Angles use the sensor frame. XZ runs from +X through sensor +Z to
+              −X; YZ runs from +Y through sensor +Z to −Y. In both planes, those
+              directions are 0°, 90° and 180° respectively.
             </p>
             <div class="lut-action-row lut-files">
               <button id="generate-lut" class="primary">Generate LUT</button>
@@ -870,19 +870,10 @@
                   <option value="lut">LUT only</option>
                 </select></label
               >
-              <label
-                >Analytical range model<select id="scene-mode">
-                  <option value="optical_path">
-                    Full optical-path correction
-                  </option>
-                  <option value="direction_only">
-                    Direction-only correction
-                  </option>
-                  <option value="geometric_path">
-                    Geometric-path assumption
-                  </option>
-                </select></label
-              >
+              <p class="fixed-model-note">
+                <b>Analytical model</b> Full optical-path reconstruction using
+                the configured inside, wall and outside indices.
+              </p>
               <div class="scene-lut-state">
                 <span id="scene-lut-status">LUT not generated</span>
                 <div class="lut-action-row">

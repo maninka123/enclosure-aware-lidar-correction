@@ -107,7 +107,6 @@ test("cloud correction, downloads and stale result protection", async ({
   expect((await download).suggestedFilename()).toBe("analytical-corrected.pcd");
   await page.locator("#thickness").fill("6");
   await expect(page.locator("#export-pcd")).toBeDisabled();
-  await page.locator("#cloud-mode").selectOption("optical_path");
   await page.locator("#correct-cloud").click();
   await expect(page.locator("#export-report")).toBeEnabled();
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -362,20 +361,23 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   await page.goto("/#cloud");
   await page.locator("#cloud-method").selectOption("compare");
   await expect(page.locator("#lut-panel")).toBeVisible();
+  await expect(page.locator("#cloud-mode")).toHaveCount(0);
+  await expect(page.locator("#lut-xz-min")).toHaveValue("0");
+  await expect(page.locator("#lut-xz-max")).toHaveValue("180");
+  await expect(page.locator("#lut-yz-min")).toHaveValue("0");
+  await expect(page.locator("#lut-yz-max")).toHaveValue("180");
+  await expect(page.locator(".lut-advanced")).not.toHaveAttribute("open", "");
   await page.locator("#lut-resolution").selectOption("0.5");
-  for (const [id, value] of [
-    ["lut-xz-min", "55"],
-    ["lut-xz-max", "125"],
-    ["lut-yz-min", "55"],
-    ["lut-yz-max", "125"],
-  ])
-    await page.locator(`#${id}`).fill(value);
   await page.locator("#generate-lut").click();
   await expect(page.locator("#lut-status")).toContainText("LUT ready", {
     timeout: 30000,
   });
   await expect(page.locator("#lut-progress-output")).toHaveText("100%");
   await expect(page.locator("#lut-total canvas").first()).toBeVisible();
+  for (const id of ["lut-dx", "lut-dy", "lut-total", "lut-validation"])
+    expect(
+      Number(await page.locator(`#${id}`).getAttribute("data-points")),
+    ).toBeGreaterThan(1000);
   await page.locator("#lut-panel [data-open-lut-info]").click();
   await expect(page.locator("#lut-info-dialog")).toContainText(
     "bilinear interpolation",
@@ -468,6 +470,7 @@ test("Compare both handles a large actual-scenario cloud without overflowing the
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#cloud");
   await page.locator("#cloud-method").selectOption("compare");
+  await page.locator(".lut-advanced summary").click();
   await page.locator("#lut-resolution").selectOption("0.5");
   for (const [id, value] of [
     ["lut-xz-min", "85"],

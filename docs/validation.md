@@ -11,7 +11,7 @@ The synthetic forward model and inverse use the same geometry and ray tracer. Th
 
 The [GitHub workflow passed on Python 3.10 and 3.12](https://github.com/maninka123/enclosure-aware-lidar-correction/actions/runs/35339077546) for commit `63ed02e`. It assumes this standalone folder is the repository root.
 
-The browser app has 13 Node.js tests for analytical physics, LUT angle round trips, interpolation, compatibility, file handling, scene reconstruction and finer-LUT convergence in Scene Lab. Eight Playwright workflows exercise desktop/mobile rendering, material selectors, positive-Z projections, correction/export invalidation, scene editing, renderer controls, dynamic LUT generation, LUT heatmaps, cloud comparison, a 150,000-point Compare Both regression, Scene Lab LUT metrics and stale-table detection. The Pages workflow runs these checks before deployment.
+The browser app has 14 Node.js tests for analytical physics, LUT angle round trips, full-domain inspection deltas, interpolation, compatibility, file handling, scene reconstruction and finer-LUT convergence in Scene Lab. Eight Playwright workflows exercise desktop/mobile rendering, material selectors, positive-Z projections, correction/export invalidation, scene editing, renderer controls, dynamic LUT generation, LUT heatmaps, cloud comparison, a 150,000-point Compare Both regression, Scene Lab LUT metrics and stale-table detection. The Pages workflow runs these checks before deployment.
 
 Use `requirements-tested.txt` on Python 3.10 to reproduce the tested direct dependency versions. CI tests this pinned baseline on Python 3.10 and the declared compatible dependency ranges on Python 3.12. JavaScript dependencies are pinned in `webapp/package-lock.json`; install with `npm ci`.
 

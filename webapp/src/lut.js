@@ -58,10 +58,10 @@ async function digest(value) {
 }
 export const defaultLUTSettings = () => ({
   resolution_deg: 0.1,
-  xz_min_deg: 50,
-  xz_max_deg: 130,
-  yz_min_deg: 50,
-  yz_max_deg: 130,
+  xz_min_deg: 0,
+  xz_max_deg: 180,
+  yz_min_deg: 0,
+  yz_max_deg: 180,
   interpolation: "bilinear",
 });
 export function validateLUTSettings(settings) {
@@ -98,10 +98,10 @@ export function validateLUTSettings(settings) {
     throw Error("LUT exceeds the four-million-cell safety limit.");
   return s;
 }
-export function directionToAngles(direction) {
+function planeAngles(direction, requirePositiveZ) {
   if (!direction?.every(Number.isFinite) || !norm(direction)) return [NaN, NaN];
   const d = unit(direction);
-  if (d[2] < -1e-12) return [NaN, NaN];
+  if (requirePositiveZ && d[2] < -1e-12) return [NaN, NaN];
   return [
     Math.hypot(d[0], d[2]) <= 1e-12
       ? 90
@@ -111,6 +111,7 @@ export function directionToAngles(direction) {
       : (Math.atan2(d[2], d[1]) * 180) / Math.PI,
   ];
 }
+export const directionToAngles = (direction) => planeAngles(direction, true);
 export function anglesToDirection(thetaXZ, thetaYZ) {
   const x = (thetaXZ * Math.PI) / 180,
     y = (thetaYZ * Math.PI) / 180;
@@ -176,7 +177,7 @@ export async function generateLUT(
       status[k] = code(traced.status);
       if (!traced.valid) continue;
       const out = unit(mv(inverse, traced.exit)),
-        angles = directionToAngles(out);
+        angles = planeAngles(out, false);
       valid[k] = 1;
       status[k] = 0;
       exit.set(out, k * 3);
@@ -294,30 +295,54 @@ export function validateLUT(
   progress = () => {},
   cancelled = () => false,
 ) {
-  const cells = (lut.xz.length - 1) * (lut.yz.length - 1),
-    samples = Math.min(cells, sampleLimit),
+  const xCells = lut.xz.length - 1,
+    yCells = lut.yz.length - 1,
+    cells = xCells * yCells,
+    xCount = Math.min(
+      xCells,
+      Math.max(1, Math.floor(Math.sqrt(sampleLimit * (xCells / yCells)))),
+    ),
+    yCount = Math.min(yCells, Math.max(1, Math.floor(sampleLimit / xCount))),
+    sampledIndices = (count, available) =>
+      Array.from(
+        new Set(
+          Array.from({ length: count }, (_, index) =>
+            count === 1
+              ? Math.floor((available - 1) / 2)
+              : Math.round((index * (available - 1)) / (count - 1)),
+          ),
+        ),
+      ),
+    xIndices = sampledIndices(xCount, xCells),
+    yIndices = sampledIndices(yCount, yCells),
+    samples = xIndices.length * yIndices.length,
     errors = [],
     validationError = new Float64Array(cells),
+    validationMapError = new Float64Array(samples),
     inverse = transpose(config.rotation);
   validationError.fill(NaN);
-  for (let n = 0; n < samples; n++) {
-    if (cancelled()) throw Error("LUT validation cancelled.");
-    const cell =
-        samples === 1 ? 0 : Math.round((n * (cells - 1)) / (samples - 1)),
-      i = cell % (lut.xz.length - 1),
-      j = Math.floor(cell / (lut.xz.length - 1)),
-      x = (lut.xz[i] + lut.xz[i + 1]) / 2,
-      y = (lut.yz[j] + lut.yz[j + 1]) / 2,
-      incident = anglesToDirection(x, y);
-    if (!incident) continue;
-    const traced = trace(mv(config.rotation, incident), config),
-      predicted = lookupDirection(incident, lut);
-    if (traced.valid && predicted.valid) {
-      const error = angle(mv(inverse, traced.exit), predicted.direction);
-      errors.push(error);
-      validationError[cell] = error;
+  validationMapError.fill(NaN);
+  let n = 0;
+  for (const j of yIndices) {
+    for (const i of xIndices) {
+      if (cancelled()) throw Error("LUT validation cancelled.");
+      const cell = j * xCells + i,
+        x = (lut.xz[i] + lut.xz[i + 1]) / 2,
+        y = (lut.yz[j] + lut.yz[j + 1]) / 2,
+        incident = anglesToDirection(x, y);
+      if (incident) {
+        const traced = trace(mv(config.rotation, incident), config),
+          predicted = lookupDirection(incident, lut);
+        if (traced.valid && predicted.valid) {
+          const error = angle(mv(inverse, traced.exit), predicted.direction);
+          errors.push(error);
+          validationError[cell] = error;
+          validationMapError[n] = error;
+        }
+      }
+      n++;
+      if (n % 500 === 0) progress(n / samples);
     }
-    if (n % 500 === 0) progress((n + 1) / samples);
   }
   const metrics = summary(errors),
     endpoint = (range) =>
@@ -331,6 +356,11 @@ export function validateLUT(
           ) * 1000
         : null;
   lut.validationError = validationError;
+  lut.validationMap = {
+    xz: xIndices.map((i) => (lut.xz[i] + lut.xz[i + 1]) / 2),
+    yz: yIndices.map((j) => (lut.yz[j] + lut.yz[j + 1]) / 2),
+    error: validationMapError,
+  };
   return {
     resolution_deg: lut.settings.resolution_deg,
     cells: lut.valid.length,
@@ -381,6 +411,13 @@ export function serializeLUT(lut) {
     generation_time_s: lut.generationTime,
     validation: lut.validation,
     validation_error_deg: Array.from(lut.validationError || []),
+    validation_map: lut.validationMap
+      ? {
+          xz_deg: lut.validationMap.xz,
+          yz_deg: lut.validationMap.yz,
+          error_deg: Array.from(lut.validationMap.error),
+        }
+      : null,
   };
 }
 export async function deserializeLUT(data, config) {
@@ -402,6 +439,15 @@ export async function deserializeLUT(data, config) {
     data.status.length !== count
   )
     throw Error("Malformed LUT array dimensions.");
+  if (
+    data.validation_map &&
+    (!Array.isArray(data.validation_map.xz_deg) ||
+      !Array.isArray(data.validation_map.yz_deg) ||
+      !Array.isArray(data.validation_map.error_deg) ||
+      data.validation_map.error_deg.length !==
+        data.validation_map.xz_deg.length * data.validation_map.yz_deg.length)
+  )
+    throw Error("Malformed LUT validation map.");
   return {
     schema: data.schema,
     schema_version: data.schema_version,
@@ -428,5 +474,14 @@ export async function deserializeLUT(data, config) {
       data.validation_error_deg || [],
       (value) => (value === null ? NaN : value),
     ),
+    validationMap: data.validation_map
+      ? {
+          xz: data.validation_map.xz_deg,
+          yz: data.validation_map.yz_deg,
+          error: Float64Array.from(data.validation_map.error_deg, (value) =>
+            value === null ? NaN : value,
+          ),
+        }
+      : null,
   };
 }

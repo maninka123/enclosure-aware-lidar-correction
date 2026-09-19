@@ -240,6 +240,16 @@ test("LUT import checks configuration and cache signature", async () => {
     data = serializeLUT(lut),
     restored = await deserializeLUT(data, c);
   assert.equal(restored.lutHash, lut.lutHash);
+  assert.equal(
+    lut.validationMap.error.length,
+    lut.validationMap.xz.length * lut.validationMap.yz.length,
+  );
+  assert.equal(
+    lut.validationMap.error.filter(Number.isFinite).length,
+    lut.validation.valid_validation_samples,
+  );
+  assert.deepEqual(restored.validationMap.xz, lut.validationMap.xz);
+  assert.deepEqual(restored.validationMap.yz, lut.validationMap.yz);
   await assert.rejects(
     deserializeLUT(data, { ...c, thickness: 0.006 }),
     /incompatible/,
@@ -248,6 +258,18 @@ test("LUT import checks configuration and cache signature", async () => {
     () => validateLUTSettings({ ...data.settings, xz_max_deg: 111 }),
     /divisible/,
   );
+});
+
+test("valid full-domain LUT nodes have finite inspection deltas", async () => {
+  const lut = await generateLUT(baseline(), {
+    ...defaultLUTSettings(),
+    resolution_deg: 10,
+  });
+  for (let index = 0; index < lut.valid.length; index++)
+    if (lut.valid[index]) {
+      assert.ok(Number.isFinite(lut.deltaXZ[index]));
+      assert.ok(Number.isFinite(lut.deltaYZ[index]));
+    }
 });
 
 test("Scene LUT converges toward analytical direction correction", async () => {
