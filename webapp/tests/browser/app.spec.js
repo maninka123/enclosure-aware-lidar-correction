@@ -459,3 +459,48 @@ test("dynamic LUT generation, cloud comparison and Scene Lab", async ({
   });
   expect(errors).toEqual([]);
 });
+
+test("Compare both handles a large actual-scenario cloud without overflowing the stack", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/#cloud");
+  await page.locator("#cloud-method").selectOption("compare");
+  await page.locator("#lut-resolution").selectOption("0.5");
+  for (const [id, value] of [
+    ["lut-xz-min", "85"],
+    ["lut-xz-max", "95"],
+    ["lut-yz-min", "85"],
+    ["lut-yz-max", "95"],
+  ])
+    await page.locator(`#${id}`).fill(value);
+  await page.locator("#generate-lut").click();
+  await expect(page.locator("#lut-status")).toContainText("LUT ready", {
+    timeout: 30000,
+  });
+
+  const pointCount = 150000,
+    rows = new Array(pointCount + 1);
+  rows[0] = "x,y,z,intensity";
+  for (let index = 0; index < pointCount; index++)
+    rows[index + 1] =
+      `${((index % 17) - 8) * 0.001},${((index % 19) - 9) * 0.001},5,${index}`;
+  await page.locator("#cloud-file").setInputFiles({
+    name: "actual-scenario.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(rows.join("\n") + "\n"),
+  });
+  await expect(page.locator("#cloud-info")).toContainText("150,000 points");
+  await page.locator("#correct-cloud").click();
+  await expect(page.locator("#cloud-status")).toContainText(
+    "150,000 analytical and 150,000 LUT",
+    { timeout: 60000 },
+  );
+  await expect(
+    page.locator("#cloud-method-range canvas").first(),
+  ).toBeVisible();
+  await expect(page.locator("#error")).toBeHidden();
+  expect(errors).toEqual([]);
+});

@@ -2,6 +2,15 @@ import * as echarts from "echarts";
 import { toolbar, saveImage } from "./rendering.js";
 const palette = ["#087f83", "#466bb0", "#dc7358", "#d89c27"];
 const finite = (x) => typeof x === "number" && Number.isFinite(x);
+function append(target, values) {
+  for (const value of values) target.push(value);
+}
+function finiteMaximum(values, fallback = 0.001) {
+  let maximum = fallback;
+  for (const value of values)
+    if (finite(value) && value > maximum) maximum = value;
+  return maximum;
+}
 function extent(values) {
   const a = values.filter(finite);
   if (!a.length) return [0, 1];
@@ -89,8 +98,10 @@ export class Chart2D {
             Math.min(count - 1, Math.max(0, Math.floor((v - bounds[0]) / step)))
           ]++;
         const pts = bins.map((n, j) => [bounds[0] + (j + 0.5) * step, n]);
-        xx.push(...pts.map((p) => p[0]));
-        yy.push(...bins);
+        for (const [x, y] of pts) {
+          xx.push(x);
+          yy.push(y);
+        }
         series.push({
           type: "bar",
           name: "Points",
@@ -99,7 +110,7 @@ export class Chart2D {
           itemStyle: { color, borderRadius: [3, 3, 0, 0] },
         });
       } else if (d.type === "bar") {
-        yy.push(...d.y);
+        append(yy, d.y);
         series.push({
           type: "bar",
           name: "RMSE",
@@ -118,8 +129,8 @@ export class Chart2D {
         });
       } else {
         const pts = d.x.map((x, j) => [x, d.y[j]]);
-        xx.push(...d.x);
-        yy.push(...d.y);
+        append(xx, d.x);
+        append(yy, d.y);
         series.push({
           type: d.mode === "markers" ? "scatter" : "line",
           name: d.name || `Outline ${i + 1}`,
@@ -295,7 +306,7 @@ export class Chart2D {
       option.visualMap = {
         dimension: 2,
         min: 0,
-        max: Math.max(0.001, ...vals),
+        max: finiteMaximum(vals),
         calculable: false,
         orient: "vertical",
         right: 0,

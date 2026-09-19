@@ -43,7 +43,9 @@ export function parseCloud(text, name) {
     counts,
     format;
   if (name.toLowerCase().endsWith(".csv")) {
-    [names, ...rows] = parseCSV(text);
+    const parsed = parseCSV(text);
+    names = parsed[0];
+    rows = parsed.slice(1);
     if (!names) throw Error("CSV is empty.");
     counts = names.map(() => 1);
     format = "csv";
@@ -159,7 +161,7 @@ export function exportCloud(cloud, points, format = "pcd") {
         ? [n]
         : Array.from({ length: cloud.counts[i] }, (_, j) => `${n}_${j}`),
     );
-    return csvText([names, ...rows]);
+    return csvText([names].concat(rows));
   }
   if (cloud.format === "pcd") {
     const header = cloud.header.map((line) => {

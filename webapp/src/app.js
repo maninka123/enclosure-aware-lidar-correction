@@ -333,7 +333,9 @@ async function render() {
     } else if (active === "atlas") {
       atlasData = charts.atlas(config);
       const v = atlasData.values,
-        max = v.length ? Math.max(...v) : NaN,
+        max = v.length
+          ? v.reduce((maximum, value) => Math.max(maximum, value), -Infinity)
+          : NaN,
         mean = v.length ? v.reduce((s, a) => s + a, 0) / v.length : NaN;
       stats("atlas-stats", [
         ["Maximum deviation", fmt(max, 4), "deg"],
